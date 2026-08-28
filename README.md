@@ -88,10 +88,11 @@ os-lab/
   2/              cvičení 2. ročníku — základy operačního systému
   3/              cvičení 3. ročníku — servery a síťové služby
   4/              cvičení 4. ročníku — správa dat a identit
-  _lib/           sdílené funkce pro ověřovací skripty
+  lib/            sdílené funkce pro ověřovací skripty
 ```
 
-Složky s podtržítkem na začátku jsou vnitřní — nemusíte do nich chodit.
+Do složky `lib/` chodit nemusíte — obsahuje jen společné funkce, které
+skripty používají uvnitř.
 
 ---
 
@@ -102,11 +103,11 @@ Složky s podtržítkem na začátku jsou vnitřní — nemusíte do nich chodit
 Každé cvičení je samostatná složka `<ročník>/<číslo>-<název>/` se skripty
 `start.sh`, `check.sh`, `stop.sh` a `reset.sh`.
 
-Ověřovací skripty stojí na sdílené knihovně `_lib/lab-lib.sh`, takže `check.sh`
+Ověřovací skripty stojí na sdílené knihovně `lib/lab-lib.sh`, takže `check.sh`
 jednoho cvičení je jen seznam požadavků:
 
 ```bash
-source "$(dirname "$0")/../../_lib/lab-lib.sh"
+source "$(dirname "$0")/../../lib/lab-lib.sh"
 
 require_user      "novak$ZAK"
 require_member    "novak$ZAK" ucetni

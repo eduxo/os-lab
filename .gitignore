@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Editory
+*~
+*.swp
+.vscode/
+.idea/
+
+# Dočasné a stavové soubory skriptů
+*.log
+*.tmp
+/tmp/
+**/.lab-stav
+
+# Zdrojová (čitelná) podoba sady závad — do repozitáře patří jen
+# zakódovaná verze, kterou generuje nastroje/zakoduj-poruchy.sh
+lib/poruchy.src
+**/poruchy.src
