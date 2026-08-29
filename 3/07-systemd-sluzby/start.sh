@@ -22,11 +22,15 @@ echo "  Stavím server $KONT…"
 lxc launch "$OBRAZ" "$KONT" >/dev/null 2>&1 || {
   echo "  Server se nepodařilo spustit. Zkontrolujte, že LXD běží: lxc list"; exit 1; }
 
-# počkáme, až kontejner nabootuje a chytne adresu
-for _ in $(seq 1 30); do
-  lxc exec "$KONT" -- systemctl is-system-running >/dev/null 2>&1 && break
+# Čekáme na adresu, ne na `systemctl is-system-running` — ten v kontejneru
+# obvykle skončí na "degraded" a smyčka by vždy vyčerpala celý timeout.
+IP=""
+for _ in $(seq 1 60); do
+  IP="$(lxc list "^${KONT}$" -c4 --format csv | cut -d' ' -f1)"
+  [ -n "$IP" ] && break
   sleep 1
 done
+[ -z "$IP" ] && { echo "  Server nedostal IP adresu — zavolejte vyučujícího."; exit 1; }
 
 # ── přístup přes SSH (žák lxc nepoužívá) ────────────────────────────
 lxc exec "$KONT" -- bash -c "
@@ -35,10 +39,20 @@ lxc exec "$KONT" -- bash -c "
   # historie se zapisuje průběžně, ne až při odhlášení
   grep -q 'history -a' /home/sysadmin/.bashrc || \
     echo \"PROMPT_COMMAND='history -a'\" >> /home/sysadmin/.bashrc
-  apt-get install -y -qq openssh-server >/dev/null 2>&1
-  systemctl enable --now ssh >/dev/null 2>&1
   mkdir -p /home/sysadmin/.ssh && chmod 700 /home/sysadmin/.ssh
+  # sudo bez hesla: účet z useradd žádné heslo nemá, takže by se k rootu
+  # nedostal žák s klíčem — a na zápisu do /etc/systemd/system stojí celý lab
+  echo 'sysadmin ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-sysadmin
+  chmod 440 /etc/sudoers.d/90-sysadmin
 " >/dev/null 2>&1
+
+# ── B4: SSH je jediná cesta dovnitř — když chybí, musí to skript říct
+lxc exec "$KONT" -- bash -c \
+  "command -v sshd >/dev/null || { apt-get update -qq && apt-get install -y -qq openssh-server; }" \
+  || { echo "  SSH server se nepodařilo nainstalovat — zavolejte vyučujícího."; exit 1; }
+lxc exec "$KONT" -- systemctl enable --now ssh >/dev/null 2>&1
+lxc exec "$KONT" -- systemctl is-active --quiet ssh \
+  || { echo "  SSH na serveru neběží — zavolejte vyučujícího."; exit 1; }
 
 # Přihlášení klíčem (žák si ho vyrobil v cvičení 3/04). Když klíč nemá,
 # nastavíme jednorázové heslo a vypíšeme ho — do repozitáře žádné nepatří.
@@ -55,22 +69,25 @@ fi
 
 # ── program, který má žák rozběhnout jako službu ────────────────────
 # Poslouchá na portu a zároveň píše do logu — obojí pak jde ověřit.
+# POZOR: obsah skriptu se posílá přes `tee` s uvozeným heredokem, ne uvnitř
+# `bash -c "…"`. V dvojitých uvozovkách by se $PORT, $LOG i $(date) vyhodnotily
+# na téhle stanici a se `set -u` by skript rovnou spadl.
 lxc exec "$KONT" -- bash -c "
-  useradd -r -s /usr/sbin/nologin hlidac$ZAK2 2>/dev/null
-  mkdir -p /opt/hlidac /var/log/hlidac
-  chown hlidac$ZAK2:hlidac$ZAK2 /var/log/hlidac
-  cat > /opt/hlidac/hlidac.sh <<'EOF'
+  useradd -r -s /usr/sbin/nologin 'hlidac$ZAK2' 2>/dev/null
+  mkdir -p /opt/hlidac /var/log/hlidac /srv/stav
+  chown 'hlidac$ZAK2:hlidac$ZAK2' /var/log/hlidac /srv/stav
+"
+
+lxc exec "$KONT" -- tee /opt/hlidac/hlidac.sh >/dev/null <<'HLIDAC'
 #!/bin/bash
 # Hlídač NAKOLENI — hlásí stav na portu a zapisuje do logu.
+# Port se předává proměnnou prostředí HLIDAC_PORT.
 PORT="${HLIDAC_PORT:-9000}"
 LOG=/var/log/hlidac/hlidac.log
 ( while true; do echo "$(date '+%F %T') hlidac bezi" >> "$LOG"; sleep 10; done ) &
-exec python3 -m http.server "$PORT" --bind 0.0.0.0 --directory /opt/hlidac
-EOF
-  chmod +x /opt/hlidac/hlidac.sh
-"
-
-IP="$(lxc list "$KONT" -c4 --format csv | cut -d' ' -f1)"
+exec python3 -m http.server "$PORT" --bind 0.0.0.0 --directory /srv/stav
+HLIDAC
+lxc exec "$KONT" -- chmod +x /opt/hlidac/hlidac.sh
 
 cat <<EOF
 
@@ -86,6 +103,7 @@ cat <<EOF
 
     Uživatel služby:  hlidac$ZAK2
     Port:             $ZAK_PORT
+                      (program si ho bere z proměnné HLIDAC_PORT)
 
   Průběžná kontrola:  ./check.sh --krok 1
 

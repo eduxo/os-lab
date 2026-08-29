@@ -25,8 +25,10 @@ printf 'Mzdy za leden.\n'                    > "$BAZE/ucetni/mzdy-01.txt"
 printf 'Zápis z porady 3. 2.\n'              > "$BAZE/vedeni/porady/2026-02-03.txt"
 for m in 01 02 03; do printf 'Faktura %s/2025\n' "$m" > "$BAZE/archiv/2025/faktury/f-$m.txt"; done
 
-# Kód, který žák najde jen tím, že strukturu skutečně projde.
-# Je odvozený z čísla žáka, takže se nedá opsat od souseda ani vygenerovat.
+# Kód odvozený z čísla žáka — chrání proti opisování od souseda.
+# NECHRÁNÍ proti vygenerování: tenhle skript je ve veřejném repozitáři, takže
+# si kód spočítá každý, kdo ho najde. Hodnocení proto stojí i na poznamky.txt,
+# kde žák dokládá cesty a počty, které bez projití struktury nezjistí.
 KOD="NAK-$(( (ZAK * 7919) % 9000 + 1000 ))"
 printf 'Poznámka pro nového správce.\n\nPřístupový kód pro dnešní cvičení: %s\n' "$KOD" \
      > "$BAZE/archiv/2026/predavaci-protokol.txt"

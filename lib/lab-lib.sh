@@ -12,6 +12,7 @@
 
 # ────────────────────────────────────────────────────────── nastavení
 LAB_KONTEJNER="${LAB_KONTEJNER:-}"     # prázdné = kontrolujeme tuto stanici
+LAB_UZIVATEL="${LAB_UZIVATEL:-sysadmin}"   # pod kým žák v kontejneru pracuje
 _pass=0; _fail=0; _krok_filtr=""; _aktualni_krok=0; _radky=()
 
 # barvy jen když píšeme do terminálu (v rouře by překážely)
@@ -24,7 +25,7 @@ fi
 # ────────────────────────────────────────────────── parametry příkazu
 for _a in "$@"; do
   case "$_a" in
-    --krok) shift ;;
+    --krok) ;;                                    # hodnotu chytí následující iterace
     --krok=*) _krok_filtr="${_a#*=}" ;;
     [0-9]*) [ -z "$_krok_filtr" ] && _krok_filtr="$_a" ;;
     --help|-h)
@@ -34,6 +35,8 @@ for _a in "$@"; do
       exit 0 ;;
   esac
 done
+# "02" a "2" musí označovat tentýž krok
+[ -n "$_krok_filtr" ] && _krok_filtr=$((10#$_krok_filtr))
 
 # ─────────────────────────────────────────────────────── číslo žáka
 # Ptáme se jednou a pamatujeme si. Žák o té hodnotě ví a umí ji opravit,
@@ -42,17 +45,26 @@ _souborZak="$HOME/.os-lab-zak"
 zjisti_zaka() {
   if [ -f "$_souborZak" ]; then
     ZAK="$(tr -dc '0-9' < "$_souborZak")"
+    # 10# vynutí desítkovou soustavu — bez toho bash čte "08" jako osmičkovou
+    # konstantu a skript spadne. Zadání používá dvouciferné XX, takže "08" přijde.
+    ZAK=$((10#${ZAK:-0}))
+    if [ "$ZAK" -lt 1 ] || [ "$ZAK" -gt 40 ]; then
+      printf "  ${_C}V %s je neplatné číslo.${_0} Smažte ho a spusťte skript znovu.\n" "$_souborZak"
+      exit 1
+    fi
   fi
   if [ -z "${ZAK:-}" ]; then
     echo
     printf "  ${_B}Zadejte své číslo v třídním výkazu${_0} (1–40): "
     read -r ZAK
     ZAK="$(printf '%s' "$ZAK" | tr -dc '0-9')"
-    if [ -z "$ZAK" ] || [ "$ZAK" -lt 1 ] || [ "$ZAK" -gt 40 ]; then
+    ZAK=$((10#${ZAK:-0}))
+    if [ "$ZAK" -lt 1 ] || [ "$ZAK" -gt 40 ]; then
       printf "  ${_C}Neplatné číslo.${_0} Zkuste to znovu.\n"; exit 1
     fi
     printf '%s\n' "$ZAK" > "$_souborZak"
-    printf "  Uloženo do %s — příště se už ptát nebudu.\n\n" "$_souborZak"
+    printf "  Uloženo do %s — příště se už ptát nebudu.\n" "$_souborZak"
+    printf "  (Kdyby se číslo někdy neshodovalo s výkazem, soubor smažte.)\n\n"
   fi
   export ZAK
 }
@@ -91,7 +103,8 @@ _zapis() {  # _zapis PASS|FAIL text
   fi
   _radky+=("$stav|$text")
 }
-poznamka() { [ -n "$_krok_filtr" ] && [ "$_aktualni_krok" != "$_krok_filtr" ] && return; printf "         %s\n" "$*"; }
+# %b, ne %s — jinak by se escape sekvence vypsaly jako text
+poznamka() { [ -n "$_krok_filtr" ] && [ "$_aktualni_krok" != "$_krok_filtr" ] && return; printf "         %b\n" "$*"; }
 
 # Pro případy, které nepokrývá žádná require_* funkce.
 uspech() { _zapis PASS "$*"; }
@@ -159,9 +172,16 @@ require_service_enabled() {
 }
 
 require_unit_valid() {
-  if v_cili "systemd-analyze verify '/etc/systemd/system/$1' 2>&1 | grep -q ." ; then
-    _zapis FAIL "unit $1 má chyby (systemd-analyze verify je hlásí)"
-  else _zapis PASS "unit $1 je syntakticky v pořádku"; fi
+  # Pozor: systemd-analyze verify vypisuje i neškodná varování se stavem 0.
+  # Rozhoduje návratový kód, text slouží jen jako nápověda.
+  local vystup rc
+  vystup="$(v_cili "systemd-analyze verify '/etc/systemd/system/$1' 2>&1")"; rc=$?
+  if [ "$rc" -eq 0 ]; then
+    _zapis PASS "unit $1 je syntakticky v pořádku"
+  else
+    _zapis FAIL "unit $1 má chyby"
+    [ -n "$vystup" ] && poznamka "$(printf '%s' "$vystup" | head -3)"
+  fi
 }
 
 require_port_listening() {
@@ -201,7 +221,12 @@ negative_service_not_root() {
 }
 
 pouzil_diagnostiku() {  # měkká kontrola: sáhl žák po diagnostice, než začal opravovat?
-  local h; h="$(v_cili "cat ~/.bash_history 2>/dev/null")"
+  # v_cili běží v kontejneru jako root, takže ~ je /root — historii žáka
+  # musíme hledat v jeho domovském adresáři
+  local hist h
+  if [ -n "$LAB_KONTEJNER" ]; then hist="/home/$LAB_UZIVATEL/.bash_history"
+  else hist="$HOME/.bash_history"; fi
+  h="$(v_cili "cat '$hist' 2>/dev/null")"
   if printf '%s' "$h" | grep -qE 'systemctl (status|cat)|journalctl|systemd-analyze'; then
     _zapis PASS "před opravou jste sáhli po diagnostice"
   else
