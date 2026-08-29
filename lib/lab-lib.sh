@@ -3,17 +3,17 @@
 #
 # Používá se v check.sh každého cvičení:
 #     source "$(dirname "$0")/../../lib/lab-lib.sh"
-#     require_user "novak$ZAK"
+#     require_user "$ZAK_UZIVATEL"
 #     vypis_souhrn
 #
 # Cíl kontroly: implicitně žákova stanice. Když cvičení běží v kontejneru,
 # nastaví se před prvním require:
-#     LAB_KONTEJNER="sluzby-$ZAK"
+#     LAB_KONTEJNER="sluzby-$ZAK2"
 
 # ────────────────────────────────────────────────────────── nastavení
 LAB_KONTEJNER="${LAB_KONTEJNER:-}"     # prázdné = kontrolujeme tuto stanici
 LAB_UZIVATEL="${LAB_UZIVATEL:-sysadmin}"   # pod kým žák v kontejneru pracuje
-_pass=0; _fail=0; _krok_filtr=""; _aktualni_krok=0; _radky=()
+_pass=0; _fail=0; _krok_filtr=""; _aktualni_krok=0
 
 # barvy jen když píšeme do terminálu (v rouře by překážely)
 if [ -t 1 ]; then
@@ -35,8 +35,13 @@ for _a in "$@"; do
       exit 0 ;;
   esac
 done
-# "02" a "2" musí označovat tentýž krok
-[ -n "$_krok_filtr" ] && _krok_filtr=$((10#$_krok_filtr))
+# "02" a "2" musí označovat tentýž krok; nesmysl musí spadnout hlasitě
+if [ -n "$_krok_filtr" ]; then
+  case "$_krok_filtr" in
+    ''|*[!0-9]*) printf "  Neznámá část: %s. Použijte třeba --krok 2\n" "$_krok_filtr"; exit 1 ;;
+    *) _krok_filtr=$((10#$_krok_filtr)) ;;
+  esac
+fi
 
 # ─────────────────────────────────────────────────────── číslo žáka
 # Ptáme se jednou a pamatujeme si. Žák o té hodnotě ví a umí ji opravit,
@@ -62,7 +67,7 @@ zjisti_zaka() {
     if [ "$ZAK" -lt 1 ] || [ "$ZAK" -gt 40 ]; then
       printf "  ${_C}Neplatné číslo.${_0} Zkuste to znovu.\n"; exit 1
     fi
-    printf '%s\n' "$ZAK" > "$_souborZak"
+    printf '%02d\n' "$ZAK" > "$_souborZak"   # dvouciferně — zadání odkazují na XX
     printf "  Uloženo do %s — příště se už ptát nebudu.\n" "$_souborZak"
     printf "  (Kdyby se číslo někdy neshodovalo s výkazem, soubor smažte.)\n\n"
   fi
@@ -79,6 +84,10 @@ ZAK_UZIVATEL="novak$ZAK2"          # novak05
 ZAK_IP="10.10.10.1$ZAK2"           # 10.10.10.105
 ZAK_PORT="90$ZAK2"                 # 9005
 export ZAK2 ZAK_UZIVATEL ZAK_IP ZAK_PORT
+
+# Kód odvozený z čísla žáka. Používá start.sh i check.sh — musí být na jednom
+# místě, jinak se při změně vzorce rozejdou.
+lab_kod() { printf '%s-%d' "${1:-NAK}" $(( (ZAK * 7919) % 9000 + 1000 )); }
 
 # ──────────────────────────────────────────────── spuštění v cíli
 # Provede příkaz tam, kde cvičení běží — na stanici, nebo v kontejneru.
@@ -101,7 +110,6 @@ _zapis() {  # _zapis PASS|FAIL text
   else
     _fail=$((_fail+1)); printf "  ${_C}[FAIL]${_0} %s\n" "$text"
   fi
-  _radky+=("$stav|$text")
 }
 # %b, ne %s — jinak by se escape sekvence vypsaly jako text
 poznamka() { [ -n "$_krok_filtr" ] && [ "$_aktualni_krok" != "$_krok_filtr" ] && return; printf "         %b\n" "$*"; }
@@ -135,9 +143,11 @@ require_member() {  # require_member uzivatel skupina
   else _zapis FAIL "$1 není ve skupině $2"; fi
 }
 
-require_path() {  # require_path cesta [popis]
+require_path() {  # require_path cesta [popis_pass] [popis_fail]
+  # Pozor: PASS a FAIL potřebují různý text. Se společným popisem by FAIL
+  # tvrdil „adresář existuje" a žák by nevěděl, co po něm chceme.
   if v_cili "test -e '$1'"; then _zapis PASS "${2:-existuje $1}"
-  else _zapis FAIL "${2:-chybí $1}"; fi
+  else _zapis FAIL "${3:-${2:+chybí: }${2:-chybí $1}}"; fi
 }
 
 require_mode() {  # require_mode cesta prava   (např. 2770)
@@ -238,6 +248,9 @@ pouzil_diagnostiku() {  # měkká kontrola: sáhl žák po diagnostice, než za�
 # ═══════════════════════════════════════════════════════ souhrn
 vypis_souhrn() {
   local celkem=$((_pass + _fail))
+  if [ "$celkem" -eq 0 ] && [ -n "$_krok_filtr" ]; then
+    printf "\n  Část %s v tomto cvičení není.\n\n" "$_krok_filtr"; return 1
+  fi
   echo
   if [ "$_fail" -eq 0 ] && [ "$celkem" -gt 0 ]; then
     printf "  ${_Z}${_B}Hotovo — %d z %d.${_0}\n" "$_pass" "$celkem"
@@ -247,12 +260,13 @@ vypis_souhrn() {
 
   # Otisk: obsahuje stanici, číslo žáka a čas. NENÍ to důkaz (žák má na svém
   # stroji root), ale pozná se podle něj přeposlaný cizí výsledek.
-  local podklad otisk
-  podklad="$(hostname)|$ZAK|$(date +%Y-%m-%dT%H:%M)|$_pass/$celkem"
+  local podklad otisk cas
+  cas="$(date +%Y-%m-%dT%H:%M)"          # jednou — jinak se hašuje jiný čas, než se vypíše
+  podklad="$(hostname)|$ZAK|$cas|$_pass/$celkem"
   if command -v sha256sum >/dev/null; then otisk="$(printf '%s' "$podklad" | sha256sum | cut -c1-12)"
   else otisk="$(printf '%s' "$podklad" | shasum -a 256 | cut -c1-12)"; fi
   printf "  ${_M}Žák:${_0} %s · ${_M}Stanice:${_0} %s · ${_M}Čas:${_0} %s · ${_M}Otisk:${_0} %s\n\n" \
-         "$ZAK" "$(hostname)" "$(date '+%d.%m. %H:%M')" "$otisk"
+         "$ZAK2" "$(hostname)" "$cas" "$otisk"
 
   [ "$_fail" -eq 0 ] && return 0 || return 1
 }

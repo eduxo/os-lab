@@ -16,7 +16,8 @@ fi
 
 echo "  Připravuji pracovní adresář firmy NAKOLENI…"
 
-mkdir -p "$BAZE"/{ucetni,sklad,vedeni/porady,archiv/2025/faktury,archiv/2026}
+mkdir -p "$BAZE"/{ucetni,sklad,vedeni/porady,archiv/2025/faktury,archiv/2026,reklamace}
+# `reklamace` zůstává prázdná schválně — je to odpověď na třetí otázku v poznámkách
 
 # běžné soubory, mezi kterými se žák pohybuje
 printf 'Ceník platný od ledna.\n'            > "$BAZE/sklad/cenik.txt"
@@ -29,7 +30,7 @@ for m in 01 02 03; do printf 'Faktura %s/2025\n' "$m" > "$BAZE/archiv/2025/faktu
 # NECHRÁNÍ proti vygenerování: tenhle skript je ve veřejném repozitáři, takže
 # si kód spočítá každý, kdo ho najde. Hodnocení proto stojí i na poznamky.txt,
 # kde žák dokládá cesty a počty, které bez projití struktury nezjistí.
-KOD="NAK-$(( (ZAK * 7919) % 9000 + 1000 ))"
+KOD="$(lab_kod NAK)"
 printf 'Poznámka pro nového správce.\n\nPřístupový kód pro dnešní cvičení: %s\n' "$KOD" \
      > "$BAZE/archiv/2026/predavaci-protokol.txt"
 
@@ -41,12 +42,14 @@ cat <<EOF
   Prostředí je připravené.
 
     Pracovní adresář:  $BAZE
-    Vaše číslo:        $ZAK
+    Vaše číslo (XX):   $ZAK2
 
   Začněte tím, že se do adresáře přepnete:
 
     cd ~/nakoleni
 
-  Průběžnou kontrolu spustíte odsud:  ./check.sh --krok 1
+  Průběžnou kontrolu spouštějte odsud, ne z ~/nakoleni:
+
+    cd ~/os-lab/2/03-prikazovy-radek && ./check.sh --krok 1
 
 EOF

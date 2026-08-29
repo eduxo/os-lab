@@ -13,7 +13,7 @@ if lxc info "$KONT" >/dev/null 2>&1; then
   echo "  Server $KONT už existuje — pokračujete tam, kde jste skončili."
   echo "  Chcete začít znovu?  ./reset.sh"
   echo
-  echo "    ssh sysadmin@$(lxc list "$KONT" -c4 --format csv | cut -d' ' -f1)"
+  echo "    ssh sysadmin@$(lxc list "^${KONT}$" -c4 --format csv | cut -d' ' -f1)"
   echo
   exit 0
 fi
@@ -51,7 +51,8 @@ lxc exec "$KONT" -- bash -c \
   "command -v sshd >/dev/null || { apt-get update -qq && apt-get install -y -qq openssh-server; }" \
   || { echo "  SSH server se nepodařilo nainstalovat — zavolejte vyučujícího."; exit 1; }
 lxc exec "$KONT" -- systemctl enable --now ssh >/dev/null 2>&1
-lxc exec "$KONT" -- systemctl is-active --quiet ssh \
+# Ubuntu 24.04 může mít SSH socket-aktivované (ssh.socket místo ssh.service)
+lxc exec "$KONT" -- bash -c "systemctl is-active --quiet ssh || systemctl is-active --quiet ssh.socket" \
   || { echo "  SSH na serveru neběží — zavolejte vyučujícího."; exit 1; }
 
 # Přihlášení klíčem (žák si ho vyrobil v cvičení 3/04). Když klíč nemá,
@@ -64,6 +65,9 @@ if [ -n "$KLIC" ]; then
 else
   HESLO="hlidac$(( (ZAK * 137) % 900 + 100 ))"
   lxc exec "$KONT" -- bash -c "echo 'sysadmin:$HESLO' | chpasswd"
+  # cloud image Ubuntu má PasswordAuthentication no — bez tohohle by heslo nefungovalo
+  lxc exec "$KONT" -- bash -c \
+    "printf 'PasswordAuthentication yes\n' > /etc/ssh/sshd_config.d/99-lab.conf; systemctl restart ssh" >/dev/null 2>&1
   PRIHLASENI="heslem: $HESLO"
 fi
 
@@ -105,6 +109,8 @@ cat <<EOF
     Port:             $ZAK_PORT
                       (program si ho bere z proměnné HLIDAC_PORT)
 
-  Průběžná kontrola:  ./check.sh --krok 1
+  Průběžná kontrola — ve druhém okně, na této stanici (ne na serveru):
+
+    cd ~/os-lab/3/07-systemd-sluzby && ./check.sh --krok 1
 
 EOF

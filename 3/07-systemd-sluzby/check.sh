@@ -16,7 +16,7 @@ elif [ "$STAV" != "RUNNING" ]; then
 fi
 
 krok 1 "Unit soubor"
-require_path "/etc/systemd/system/hlidac.service" "unit hlidac.service existuje"
+require_path "/etc/systemd/system/hlidac.service" "unit hlidac.service existuje" "chybí /etc/systemd/system/hlidac.service"
 require_unit_valid "hlidac.service"
 
 krok 2 "Služba běží a nastartuje po restartu"
@@ -27,6 +27,9 @@ krok 3 "Běží správně"
 require_service_user "hlidac" "hlidac$ZAK2"
 require_port_listening "$ZAK_PORT"
 require_soubor_obsahuje "/var/log/hlidac/hlidac.log" "hlidac bezi" "služba zapisuje do logu"
+
+# měkká kontrola — nezvyšuje jmenovatel, jen pochválí nebo poradí
+pouzil_diagnostiku
 
 # Poznámka: negativní kontrolu „neběží pod rootem" nepřidáváme — je obsažená
 # v require_service_user výše a jen by nafukovala jmenovatel.
