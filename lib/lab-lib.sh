@@ -87,7 +87,27 @@ export ZAK2 ZAK_UZIVATEL ZAK_IP ZAK_PORT
 
 # Kód odvozený z čísla žáka. Používá start.sh i check.sh — musí být na jednom
 # místě, jinak se při změně vzorce rozejdou.
-lab_kod() { printf '%s-%d' "${1:-NAK}" $(( (ZAK * 7919) % 9000 + 1000 )); }
+lab_kod() {  # lab_kod PREFIX [sůl]
+  # Sůl odlišuje kódy různých cvičení. Bez ní by měl žák ve všech cvičeních
+  # tytéž čtyři číslice a druhý kód by uhodl, aniž by ho hledal.
+  printf '%s-%d' "${1:-NAK}" $(( (ZAK * 7919 + ${2:-0} * 104729) % 9000 + 1000 ))
+}
+
+# Deterministický výběr K položek z N podle čísla žáka. Používá ho start.sh
+# i check.sh, takže vzorec musí být na jednom místě — jinak se rozejdou
+# a žák dostane jiné zadání, než jaké se mu kontroluje.
+lab_vyber() {  # lab_vyber N K [posun]  → vypíše K různých indexů 1..N, po jednom na řádek
+  local n="$1" k="$2" posun="${3:-0}" i j t s
+  local -a p=()
+  for ((i=1; i<=n; i++)); do p+=("$i"); done
+  s=$(( (ZAK * 7919 + posun * 104729) % 2147483647 ))
+  for ((i=n-1; i>0; i--)); do
+    s=$(( (s * 1103515245 + 12345) % 2147483648 ))
+    j=$(( s % (i+1) ))
+    t="${p[i]}"; p[i]="${p[j]}"; p[j]="$t"
+  done
+  printf '%s\n' "${p[@]:0:k}"
+}
 
 # ──────────────────────────────────────────────── spuštění v cíli
 # Provede příkaz tam, kde cvičení běží — na stanici, nebo v kontejneru.
@@ -211,9 +231,108 @@ require_pkg() {
   else _zapis FAIL "balíček $1 chybí"; fi
 }
 
-require_soubor_obsahuje() {  # require_soubor_obsahuje cesta vzor popis
+require_soubor_obsahuje() {  # cesta vzor [popis_pass] [popis_fail]
   if v_cili "grep -qE '$2' '$1'"; then _zapis PASS "${3:-$1 obsahuje očekávaný obsah}"
-  else _zapis FAIL "${3:-$1 neobsahuje očekávaný obsah}"; fi
+  else _zapis FAIL "${4:-${3:-$1 neobsahuje očekávaný obsah}}"; fi
+}
+
+# ── odpovědi žáka ve tvaru „klíč: hodnota" ───────────────────────
+# Zadání nechávají žáka zapisovat odpovědi na řádky `klic: hodnota`.
+# Kontrola pak porovnává buď přesnou hodnotu (když ji umíme přečíst ze
+# stanice), nebo jen tvar odpovědi. Nikdy pouhý výskyt znaku — na ten
+# by náhodou trefil kdokoli.
+_zaznam() {  # _zaznam soubor klic  → vypíše hodnotu bez okolních mezer
+  v_cili "grep -im1 -E '^[[:space:]]*$2[[:space:]]*:' '$1'" \
+    | sed -E 's/^[[:space:]]*[^:]*:[[:space:]]*//; s/[[:space:]]+$//'
+}
+
+require_zaznam() {  # require_zaznam soubor klic hodnota [popis]
+  # Hláška [FAIL] nikdy nevypisuje očekávanou hodnotu. Průběžná kontrola je
+  # checkpoint, ne nápověda — jinak by stačilo spustit check.sh a odpovědi
+  # z něj opsat. Co má žák hledat, patří do zadání, ne sem.
+  local h; h="$(_zaznam "$1" "$2")"
+  # Nevyplněný řádek nesmí projít ani tehdy, když je prázdná i očekávaná
+  # hodnota (třeba když se ji nepodařilo přečíst ze stanice).
+  if [ -n "$h" ] && [ "$h" = "$3" ]; then _zapis PASS "${4:-$2: $3}"
+  else _zapis FAIL "${4:-řádek '$2:' nesouhlasí} (máte '${h:-nic}')"; fi
+}
+
+require_zaznam_tvar() {  # require_zaznam_tvar soubor klic regulární_výraz [popis]
+  local h; h="$(_zaznam "$1" "$2")"
+  if [ -n "$h" ] && printf '%s' "$h" | grep -qE "$3"; then
+    _zapis PASS "${4:-$2: $h}"
+  else _zapis FAIL "${4:-řádek '$2:' nemá očekávaný tvar} (máte '${h:-nic}')"; fi
+}
+
+# Otisk textu. Používá ho i vypis_souhrn — na macOS a v minimálních
+# obrazech nemusí být sha256sum, ale shasum bývá.
+_hash() {
+  if command -v sha256sum >/dev/null; then sha256sum | cut -d' ' -f1
+  else shasum -a 256 | cut -d' ' -f1; fi
+}
+
+# Otisk odpovědi. Volá ho start.sh při přípravě i check.sh při kontrole —
+# obě strany musí normalizovat stejně, jinak neprojde ani správná odpověď.
+# Normalizace: malá písmena, jedna mezera mezi slovy, bez okrajových mezer.
+_otisk_odpovedi() {  # _otisk_odpovedi "text"
+  local n
+  n="$(printf '%s' "$*" | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -E 's/^ +| +$//g')"
+  printf '%s' "$n" | _hash
+}
+
+require_zaznam_hash() {  # require_zaznam_hash soubor klic otisk [popis]
+  # Pro odpovědi, které nemají ležet v žákově adresáři otevřeně. start.sh
+  # uloží jen otisk správné odpovědi, check.sh porovnává otisky.
+  local h n
+  h="$(_zaznam "$1" "$2")"
+  n="$(_otisk_odpovedi "$h")"
+  if [ -n "$h" ] && [ "$n" = "$3" ]; then _zapis PASS "${4:-$2: odpověď souhlasí}"
+  else _zapis FAIL "${4:-$2: odpověď nesouhlasí} (máte '${h:-nic}')"; fi
+}
+
+require_soubor_neprazdny() {  # cesta [popis_pass] [popis_fail]
+  if v_cili "test -s '$1'"; then _zapis PASS "${2:-$1 existuje a není prázdný}"
+  else _zapis FAIL "${3:-chybí nebo je prázdný: $1}"; fi
+}
+
+require_min_radku() {  # soubor N [popis]
+  local n; n="$(v_cili "grep -c '' '$1'")"; n="${n:-0}"
+  if [ "$n" -ge "$2" ]; then _zapis PASS "${3:-$1 má aspoň $2 řádků}"
+  else _zapis FAIL "${3:-$1 má mít aspoň $2 řádků} (má $n)"; fi
+}
+
+require_pocet_souboru() {  # adresar vzor N [popis]
+  local n; n="$(v_cili "ls -1d '$1'/$2 | grep -c ''")"; n="${n:-0}"
+  if [ "$n" -eq "$3" ]; then _zapis PASS "${4:-v $1 je $3 položek typu $2}"
+  else _zapis FAIL "${4:-v $1 má být $3 položek typu $2} (je jich $n)"; fi
+}
+
+require_prikaz() {  # jmeno [popis]
+  if v_cili "command -v '$1' >/dev/null"; then _zapis PASS "${2:-nástroj $1 je k dispozici}"
+  else _zapis FAIL "${2:-nástroj $1 na stanici chybí — řekněte o tom vyučujícímu}"; fi
+}
+
+require_hostname() {  # ocekavane_jmeno
+  local h; h="$(v_cili "hostname")"
+  if [ "$h" = "$1" ]; then _zapis PASS "stanice se jmenuje $1"
+  else _zapis FAIL "stanice se jmenuje '${h:-?}', očekáváno $1"; fi
+}
+
+require_soubor_magie() {  # soubor hexadecimální_prefix [popis]
+  # Ověří první bajty souboru. Používá se tam, kde obsah přečíst nejde
+  # (zašifrovaná databáze), ale musíme poznat, že jde o skutečný soubor
+  # daného formátu, a ne o prázdnou schránku se správným jménem.
+  local m; m="$(v_cili "head -c 8 '$1' | od -An -tx1 | tr -d ' \n'")"
+  case "$m" in
+    "$2"*) _zapis PASS "${3:-$1 je soubor očekávaného formátu}" ;;
+    *)     _zapis FAIL "${3:-$1 chybí, nebo není soubor očekávaného formátu}" ;;
+  esac
+}
+
+require_gpg_klic() {  # vzor [popis]
+  if v_cili "gpg --list-keys 2>/dev/null | grep -qF '$1'"; then
+    _zapis PASS "${2:-v klíčence je klíč pro $1}"
+  else _zapis FAIL "${2:-v klíčence není klíč pro $1}"; fi
 }
 
 # ── negativní kontroly: hlídají obchvaty, ne dovednosti ──────────
