@@ -30,18 +30,22 @@ else
   chyba "chybí ~/netlab/prevzato/poznamky.txt s vašimi odpověďmi"
 fi
 
-# Tohle je jádro hodnocení: cestu a počty nezjistí nikdo, kdo strukturu
-# neprošel — ani `grep -r`, ani rada zvenčí.
-if [ -f "$POZN" ] && grep -qE 'archiv/2026' "$POZN"; then
-  uspech "uvedli jste cestu k předávacímu protokolu"
-else
-  chyba "v poznámkách chybí plná cesta k protokolu (otázka 1)"
-fi
-# Kotvíme na tvar „sklad: 2" — pouhá číslovaná odpověď (1. 2. 3.) neprojde.
-if [ -f "$POZN" ] && grep -qiE 'sklad[^0-9]{0,4}2' "$POZN" && grep -qiE '(ucetni|účetní)[^0-9]{0,4}1' "$POZN"; then
-  uspech "uvedli jste počty souborů v odděleních"
-else
-  chyba "v poznámkách chybí počty souborů (otázka 2) — pište ve tvaru 'sklad: 2'"
-fi
+# Jádro hodnocení: cestu ani počty nezjistí nikdo, kdo strukturu neprošel.
+# Dřív se tu hledaly podřetězce, což bylo příliš měkké — poznámky, které
+# neodpovídaly na nic, procházely na plný počet. Teď se čte hodnota za
+# klíčem a počty se berou ze skutečného stromu, ne z pevného čísla.
+require_zaznam_tvar "$POZN" protokol 'archiv/2026/predavaci-protokol\.txt$' \
+  "uvedli jste cestu k předávacímu protokolu"
+
+POCET_SKLAD=$(ls -1 "$BAZE/sklad" 2>/dev/null | grep -c '')
+POCET_UCETNI=$(ls -1 "$BAZE/ucetni" 2>/dev/null | grep -c '')
+require_zaznam "$POZN" sklad  "$POCET_SKLAD"  "uvedli jste počet souborů ve skladu"
+require_zaznam "$POZN" ucetni "$POCET_UCETNI" "uvedli jste počet souborů v účetní"
+
+# Třetí otázka: který adresář zůstal prázdný. Zadání ji vyžaduje, kontrola
+# ji dřív vůbec nesledovala.
+PRAZDNY=$(cd "$BAZE" 2>/dev/null && for d in */; do
+            [ -z "$(ls -A "$d" 2>/dev/null)" ] && printf '%s\n' "${d%/}"; done | head -1)
+require_zaznam "$POZN" prazdny "$PRAZDNY" "uvedli jste, který adresář je prázdný"
 
 vypis_souhrn

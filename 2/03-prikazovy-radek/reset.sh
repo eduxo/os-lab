@@ -11,7 +11,7 @@ echo "    ${MOJE[*]}"
 echo "  v adresáři $BAZE. Ostatní cvičení zůstanou nedotčená."
 read -r -p "  Opravdu začít znovu? [a/N] " o
 case "$o" in
-  [aAyY])
+  [aA]|[aA][nN][oO]|[yY]|[yY][eE][sS])
     for m in "${MOJE[@]}"; do rm -rf "${BAZE:?}/$m"; done
     echo "  Smazáno."; exec "$(dirname "$0")/start.sh" ;;
   *) echo "  Zrušeno, nic se nezměnilo." ;;

@@ -122,28 +122,18 @@ posta_L3() { cat <<'ZPRAVA'
 Od: Sklad <sklad@netlab.test>
 Komu: PRIJEMCE
 Datum: čtvrtek 11. září 2026, 13:20
-Předmět: Inventura — přístup do skladového systému
+Předmět: Inventura 30. 9. — sklad bude zavřený
 
 Dobrý den,
 
-na konci měsíce nás čeká inventura a potřebovali bychom pro dva
-brigádníky dočasný přístup do skladového systému, jen na čtení.
+v úterý 30. září probíhá inventura a sklad bude celý den zavřený.
+Kdo potřebuje něco vyzvednout, ať si to zařídí do pondělí.
 
-Můžete to zařídit? Jména a rodná čísla Vám pošleme přes interní
-formulář, ne e-mailem.
+Výdej se rozjede zase ve středu ráno.
 
-Díky, Marek Toman, vedoucí skladu
+Marek Toman, vedoucí skladu
 ZPRAVA
 }
-
-# Očekávaná odpověď u každé zprávy. U podvodné je to slovo phishing
-# a doména odesílatele — tu žák nikde neuhodne, musí ji ze zprávy opsat.
-odpoved_P1() { echo "phishing net1ab.test"; }
-odpoved_P2() { echo "phishing netlab-platby.test"; }
-odpoved_P3() { echo "phishing netlab.secure-login.test"; }
-odpoved_L1() { echo "ok"; }
-odpoved_L2() { echo "ok"; }
-odpoved_L3() { echo "ok"; }
 
 echo "  Připravuji služební poštu a formulář odpovědí…"
 mkdir -p "$POSTA"
@@ -160,13 +150,14 @@ for i in $(lab_vyber 3 "$POCET_L" 7);  do VYBER+=("L$i"); done
 # Pořadí zpráv ve schránce — aby podvodná nebyla vždycky první.
 PORADI=($(lab_vyber 3 3 13))
 
-: > "$HYG/.zadani"
+# Správné verdikty se nikam neukládají a check.sh je nehodnotí — posoudit
+# zprávu je úsudek, ne stav systému. Skript by správnou odpověď musel mít
+# u sebe, a protože je repozitář veřejný, dal by se z něj vyčíst. Kontrola
+# proto hlídá jen tvar odpovědi; správnost bere vyučující při obhajobě.
 for POZICE in 1 2 3; do
   IDX=${PORADI[$((POZICE-1))]}
   ZDROJ=${VYBER[$((IDX-1))]}
   "posta_$ZDROJ" | sed "s/PRIJEMCE/novak$ZAK2@netlab.test/" > "$POSTA/$POZICE.txt"
-  # Do adresáře žáka ukládáme jen otisk správné odpovědi, ne odpověď samu.
-  printf '%s %s\n' "$POZICE" "$(_otisk_odpovedi "$("odpoved_$ZDROJ")")" >> "$HYG/.zadani"
 done
 
 # Klíč pro jednorázové kódy (TOTP). Base32 odvozená z čísla žáka —
@@ -186,8 +177,10 @@ cat > "$ODPOVEDI" <<'FORMULAR'
 #
 # U pošty pište u podvodné zprávy slovo phishing a za mezerou doménu
 # odesílatele (to, co je v adrese za zavináčem). U poctivé zprávy jen ok.
-#   posta-1: phishing nejaka-domena.test
-#   posta-2: ok
+# Příklady schválně s N místo čísla — kdyby tu stálo posta-1, dal by se
+# vyplnit rovnou komentář a skutečný řádek by zůstal prázdný.
+#   posta-N: phishing nejaka.domena.test
+#   posta-N: ok
 zaznamu:
 mfa-kod:
 mfa-cas:

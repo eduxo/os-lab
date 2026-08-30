@@ -6,7 +6,7 @@ echo
 echo "  Tím smažete celý adresář $PRIJEM včetně toho, co jste v něm udělali."
 read -r -p "  Opravdu začít znovu? [a/N] " o
 case "$o" in
-  [aAyY]) rm -rf "$PRIJEM"; echo "  Smazáno."; exec "$(dirname "$0")/start.sh" ;;
+  [aA]|[aA][nN][oO]|[yY]|[yY][eE][sS]) rm -rf "${PRIJEM:?}"; echo "  Smazáno."; exec "$(dirname "$0")/start.sh" ;;
   *) echo "  Zrušeno, nic se nezměnilo." ;;
 esac
 echo

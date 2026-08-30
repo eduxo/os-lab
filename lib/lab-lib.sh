@@ -23,9 +23,14 @@ else
 fi
 
 # ────────────────────────────────────────────────── parametry příkazu
+_ceka_cislo=0
 for _a in "$@"; do
+  # Hodnota za `--krok` přijde až v další iteraci, proto ta příznaková
+  # proměnná. Bez ní by `--krok abc` tiše proběhlo jako kontrola celého
+  # cvičení a žák by si myslel, že ověřil jen svoji část.
+  if [ "$_ceka_cislo" -eq 1 ]; then _krok_filtr="$_a"; _ceka_cislo=0; continue; fi
   case "$_a" in
-    --krok) ;;                                    # hodnotu chytí následující iterace
+    --krok) _ceka_cislo=1 ;;
     --krok=*) _krok_filtr="${_a#*=}" ;;
     [0-9]*) [ -z "$_krok_filtr" ] && _krok_filtr="$_a" ;;
     --help|-h)
@@ -33,8 +38,12 @@ for _a in "$@"; do
       echo "  bez parametru  — ověří celé cvičení"
       echo "  --krok N       — ověří jen část N (průběžná kontrola)"
       exit 0 ;;
+    *) printf "  Neznámý parametr: %s. Použijte ./check.sh --help\n" "$_a"; exit 1 ;;
   esac
 done
+if [ "$_ceka_cislo" -eq 1 ]; then
+  printf "  Za --krok chybí číslo části. Třeba: ./check.sh --krok 2\n"; exit 1
+fi
 # "02" a "2" musí označovat tentýž krok; nesmysl musí spadnout hlasitě
 if [ -n "$_krok_filtr" ]; then
   case "$_krok_filtr" in
@@ -57,6 +66,13 @@ zjisti_zaka() {
       printf "  ${_C}V %s je neplatné číslo.${_0} Smažte ho a spusťte skript znovu.\n" "$_souborZak"
       exit 1
     fi
+  fi
+  # Když ZAK přijde z prostředí (export ZAK=abc), projde jinak bez kontroly
+  # a `printf %02d` spadne. Necháme ho projít touž branou jako ruční zadání.
+  if [ -n "${ZAK:-}" ]; then
+    ZAK="$(printf '%s' "$ZAK" | tr -dc '0-9')"
+    ZAK=$((10#${ZAK:-0}))
+    if [ "$ZAK" -lt 1 ] || [ "$ZAK" -gt 40 ]; then ZAK=""; fi
   fi
   if [ -z "${ZAK:-}" ]; then
     echo
@@ -97,13 +113,16 @@ lab_kod() {  # lab_kod PREFIX [sůl]
 # i check.sh, takže vzorec musí být na jednom místě — jinak se rozejdou
 # a žák dostane jiné zadání, než jaké se mu kontroluje.
 lab_vyber() {  # lab_vyber N K [posun]  → vypíše K různých indexů 1..N, po jednom na řádek
-  local n="$1" k="$2" posun="${3:-0}" i j t s
+  local n="$1" k="$2" posun="${3:-0}" i j t
   local -a p=()
   for ((i=1; i<=n; i++)); do p+=("$i"); done
-  s=$(( (ZAK * 7919 + posun * 104729) % 2147483647 ))
+  # Míchání řídí otisk, ne lineární generátor. První pokus stavěl na LCG
+  # a měl dvě vady naráz: nejnižší bit má periodu 2 (výběr se rozpadl na
+  # sudé a liché žáky) a různé soli daly korelované posloupnosti, protože
+  # LCG je afinní — posun v semínku se propsal do celé řady. Otisk obojí
+  # řeší a je dost rychlý, skript běží jednou za hodinu.
   for ((i=n-1; i>0; i--)); do
-    s=$(( (s * 1103515245 + 12345) % 2147483648 ))
-    j=$(( s % (i+1) ))
+    j=$(( 0x$(printf '%s-%s-%s' "$ZAK" "$posun" "$i" | _hash | cut -c1-7) % (i+1) ))
     t="${p[i]}"; p[i]="${p[j]}"; p[j]="$t"
   done
   printf '%s\n' "${p[@]:0:k}"
@@ -111,6 +130,9 @@ lab_vyber() {  # lab_vyber N K [posun]  → vypíše K různých indexů 1..N, p
 
 # ──────────────────────────────────────────────── spuštění v cíli
 # Provede příkaz tam, kde cvičení běží — na stanici, nebo v kontejneru.
+# Pozor: argumenty se sem vkládají do jednoduchých uvozovek uvnitř `bash -c`.
+# Apostrof ve vzoru nebo v cestě příkaz rozbije, a protože polykáme stderr,
+# rozbije ho tiše. Vzory pište bez apostrofů.
 v_cili() {
   if [ -n "$LAB_KONTEJNER" ]; then
     lxc exec "$LAB_KONTEJNER" -- bash -c "$*" 2>/dev/null
@@ -271,25 +293,6 @@ _hash() {
   else shasum -a 256 | cut -d' ' -f1; fi
 }
 
-# Otisk odpovědi. Volá ho start.sh při přípravě i check.sh při kontrole —
-# obě strany musí normalizovat stejně, jinak neprojde ani správná odpověď.
-# Normalizace: malá písmena, jedna mezera mezi slovy, bez okrajových mezer.
-_otisk_odpovedi() {  # _otisk_odpovedi "text"
-  local n
-  n="$(printf '%s' "$*" | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -E 's/^ +| +$//g')"
-  printf '%s' "$n" | _hash
-}
-
-require_zaznam_hash() {  # require_zaznam_hash soubor klic otisk [popis]
-  # Pro odpovědi, které nemají ležet v žákově adresáři otevřeně. start.sh
-  # uloží jen otisk správné odpovědi, check.sh porovnává otisky.
-  local h n
-  h="$(_zaznam "$1" "$2")"
-  n="$(_otisk_odpovedi "$h")"
-  if [ -n "$h" ] && [ "$n" = "$3" ]; then _zapis PASS "${4:-$2: odpověď souhlasí}"
-  else _zapis FAIL "${4:-$2: odpověď nesouhlasí} (máte '${h:-nic}')"; fi
-}
-
 require_soubor_neprazdny() {  # cesta [popis_pass] [popis_fail]
   if v_cili "test -s '$1'"; then _zapis PASS "${2:-$1 existuje a není prázdný}"
   else _zapis FAIL "${3:-chybí nebo je prázdný: $1}"; fi
@@ -316,6 +319,15 @@ require_hostname() {  # ocekavane_jmeno
   local h; h="$(v_cili "hostname")"
   if [ "$h" = "$1" ]; then _zapis PASS "stanice se jmenuje $1"
   else _zapis FAIL "stanice se jmenuje '${h:-?}', očekáváno $1"; fi
+}
+
+require_soubor_min_velikost() {  # cesta bajtů [popis]
+  # Doplněk k require_soubor_magie: samotná hlavička se dá napsat ručně,
+  # skutečný soubor s obsahem má velikost. Práh volte podle nejmenšího
+  # poctivého výsledku, ne podle typického.
+  local v; v="$(v_cili "wc -c < '$1'" | tr -dc '0-9')"; v="${v:-0}"
+  if [ "$v" -ge "$2" ]; then _zapis PASS "${3:-$1 má aspoň $2 B}"
+  else _zapis FAIL "${3:-$1 je menší, než odpovídá zadání} (má ${v} B)"; fi
 }
 
 require_soubor_magie() {  # soubor hexadecimální_prefix [popis]
@@ -382,8 +394,7 @@ vypis_souhrn() {
   local podklad otisk cas
   cas="$(date +%Y-%m-%dT%H:%M)"          # jednou — jinak se hašuje jiný čas, než se vypíše
   podklad="$(hostname)|$ZAK|$cas|$_pass/$celkem"
-  if command -v sha256sum >/dev/null; then otisk="$(printf '%s' "$podklad" | sha256sum | cut -c1-12)"
-  else otisk="$(printf '%s' "$podklad" | shasum -a 256 | cut -c1-12)"; fi
+  otisk="$(printf '%s' "$podklad" | _hash | cut -c1-12)"
   printf "  ${_M}Žák:${_0} %s · ${_M}Stanice:${_0} %s · ${_M}Čas:${_0} %s · ${_M}Otisk:${_0} %s\n\n" \
          "$ZAK2" "$(hostname)" "$cas" "$otisk"
 

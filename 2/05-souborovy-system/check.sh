@@ -22,12 +22,20 @@ require_zaznam_tvar "$MAPA" konfigurace '^/etc/?$'      "konfigurace systému: /
 require_zaznam_tvar "$MAPA" logy         '^/var/log/?$'  "systémové záznamy: /var/log"
 require_zaznam_tvar "$MAPA" domovske     '^/home/?$'     "domovské adresáře: /home"
 require_zaznam_tvar "$MAPA" docasne      '^/tmp/?$'      "dočasné soubory: /tmp"
-require_zaznam_tvar "$MAPA" programy     '^/usr/bin/?$'  "spustitelné programy: /usr/bin"
+# /bin je na Ubuntu odkaz na /usr/bin a Krok 3 téhož cvičení to žáka učí —
+# obě odpovědi jsou tedy věcně správné.
+require_zaznam_tvar "$MAPA" programy     '^/(usr/)?bin/?$' "spustitelné programy: /usr/bin"
 require_zaznam_tvar "$MAPA" zarizeni     '^/dev/?$'      "soubory zařízení: /dev"
 
 # Dvě hodnoty přečtené z této konkrétní stanice. Kdo je nespustil, nezjistí je.
-require_zaznam "$MAPA" bin-odkaz "$(readlink /bin)" \
-  "kam ukazuje /bin na této stanici"
+# Když by /bin nebyl odkaz, sonda vrátí prázdno a kontrola by odmítla každou
+# odpověď, aniž by řekla proč. Radši to přiznáme nahlas.
+BIN_ODKAZ="$(readlink /bin)"
+if [ -n "$BIN_ODKAZ" ]; then
+  require_zaznam "$MAPA" bin-odkaz "$BIN_ODKAZ" "kam ukazuje /bin na této stanici"
+else
+  poznamka "na téhle stanici není /bin odkaz, řádek bin-odkaz se proto nehodnotí"
+fi
 require_zaznam "$MAPA" ls-cesta "$(command -v ls)" \
   "kde na této stanici leží program ls"
 
@@ -37,8 +45,8 @@ require_soubor_neprazdny "$NALEZ" \
   "chybí ~/netlab/cesty/nalez.txt — spusťte ./start.sh"
 
 # Skutečné umístění hledaného souboru — čte se ze stromu, ne z tabulky.
-POCET_CILU=$(cd "$CESTY" 2>/dev/null && ls -1d provoz/*/*/inventura.txt 2>/dev/null | grep -c '')
-CIL=$(cd "$CESTY" 2>/dev/null && ls -1d provoz/*/*/inventura.txt 2>/dev/null | head -1)
+POCET_CILU=$(cd "$CESTY" 2>/dev/null && ls -1d provoz/*/*/*/inventura.txt 2>/dev/null | grep -c '')
+CIL=$(cd "$CESTY" 2>/dev/null && ls -1d provoz/*/*/*/inventura.txt 2>/dev/null | head -1)
 
 # Negativní kontrola: druhá inventura ve stromu by udělala z jednoznačné
 # odpovědi hádanku. Bývá to pokus zkrátit si hledání, ne nehoda.

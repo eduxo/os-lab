@@ -22,15 +22,20 @@ mkdir -p "$CESTY"
 
 VETEV1=(smlouvy zakazky dodavatele projekty)
 VETEV2=(2024 2025 2026 archiv)
-V1="${VETEV1[$(( ZAK % 4 ))]}"
-V2="${VETEV2[$(( (ZAK / 4) % 4 ))]}"
+VETEV3=(podklady prehledy vystupy protokoly)
+# Každá úroveň má vlastní sůl. Se zbytky po 4 a po 16 se větev opakovala
+# s periodou 16 — žáci 1, 17 a 33 měli tutéž cestu (ověřeno). Tři úrovně
+# místo dvou proto, že 4×4 = 16 možností na 40 žáků prostě nestačí.
+V1="${VETEV1[$(( $(lab_vyber 4 1 11) - 1 ))]}"
+V2="${VETEV2[$(( $(lab_vyber 4 1 12) - 1 ))]}"
+V3="${VETEV3[$(( $(lab_vyber 4 1 13) - 1 ))]}"
 
 # Výchozí bod hledání je pro všechny stejný, cíl ne. Relativní cesta mezi
 # nimi je tedy odpověď, kterou nelze opsat od souseda.
 mkdir -p "$CESTY/sklad/2025/faktury" "$CESTY/sklad/2026"
 mkdir -p "$CESTY/ucetni/mzdy" "$CESTY/ucetni/dane"
 for v in "${VETEV1[@]}"; do mkdir -p "$CESTY/provoz/$v"; done
-mkdir -p "$CESTY/provoz/$V1/$V2"
+mkdir -p "$CESTY/provoz/$V1/$V2/$V3"
 
 printf 'Faktura 01/2025\n' > "$CESTY/sklad/2025/faktury/f-01.txt"
 printf 'Faktura 02/2025\n' > "$CESTY/sklad/2025/faktury/f-02.txt"
@@ -38,7 +43,7 @@ printf 'Mzdy za srpen.\n'  > "$CESTY/ucetni/mzdy/08-2026.txt"
 printf 'Přiznání k DPH.\n' > "$CESTY/ucetni/dane/dph.txt"
 printf 'Poznámky provozu.\n' > "$CESTY/provoz/poznamky.txt"
 
-cat > "$CESTY/provoz/$V1/$V2/inventura.txt" <<INVENTURA
+cat > "$CESTY/provoz/$V1/$V2/$V3/inventura.txt" <<INVENTURA
 Inventura provozního skladu
 
 Regál A: 14 položek
@@ -63,8 +68,8 @@ FORMULAR
 
 cat > "$NALEZ" <<'FORMULAR'
 # Nalezený soubor — vyplňte hodnoty za dvojtečku.
-# absolutni = celá cesta od kořene
-# relativni = cesta z adresáře ~/netlab/cesty/sklad/2025/faktury
+# absolutni = celá cesta od kořene až po jméno souboru
+# relativni = cesta k témuž souboru z adresáře ~/netlab/cesty/sklad/2025/faktury
 # kod       = kód inventury zapsaný v nalezeném souboru
 absolutni:
 relativni:

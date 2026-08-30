@@ -48,7 +48,7 @@ else
   poznamka "počty se čtou ze skutečného obsahu; obnovte ho přes ./reset.sh"
 fi
 
-krok 3 "Třídění a historie"
+krok 3 "Třídění"
 require_path "$TRIDENI/faktury" \
   "podadresář trideni/faktury existuje" \
   "chybí trideni/faktury"
@@ -69,6 +69,7 @@ require_path "$TRIDENI/stitek-$ZAK.txt" \
 
 # Práh je 20, ne 30: shell si historii minulých relací pamatuje, ale žák,
 # který terminál během cvičení zavřel, může mít v souboru jen dnešek.
+krok 4 "Historie"
 require_min_radku "$PRIJEM/historie.txt" 20 \
   "historie.txt zachycuje aspoň 20 příkazů z vaší práce"
 require_soubor_obsahuje "$PRIJEM/historie.txt" 'ls.*\*' \

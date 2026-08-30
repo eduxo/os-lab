@@ -63,7 +63,16 @@ if [ -n "$KLIC" ]; then
   lxc exec "$KONT" -- chown -R sysadmin:sysadmin /home/sysadmin/.ssh
   PRIHLASENI="klíčem (bez hesla)"
 else
-  HESLO="hlidac$(( (ZAK * 137) % 900 + 100 ))"
+  # Heslo se losuje na stanici a zůstává na ní. Dřív se počítalo z čísla
+  # žáka — jenže vzorec byl ve veřejném repozitáři, takže si heslo k účtu
+  # kteréhokoli spolužáka spočítal kdokoli. Uložené je proto, aby druhé
+  # spuštění start.sh ukázalo totéž heslo, ne nové.
+  SOUBOR_HESLA="$HOME/.os-lab-3-07-heslo"
+  if [ ! -s "$SOUBOR_HESLA" ]; then
+    head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' | cut -c1-12 > "$SOUBOR_HESLA"
+    chmod 600 "$SOUBOR_HESLA"
+  fi
+  HESLO="$(cat "$SOUBOR_HESLA")"
   lxc exec "$KONT" -- bash -c "echo 'sysadmin:$HESLO' | chpasswd"
   # cloud image Ubuntu má PasswordAuthentication no — bez tohohle by heslo nefungovalo
   lxc exec "$KONT" -- bash -c \

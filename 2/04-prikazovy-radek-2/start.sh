@@ -21,7 +21,9 @@ cd "$PRIJEM" || exit 1
 
 # Počet faktur i jména vybraných souborů se odvozují z čísla žáka. Odpovědi
 # se tak liší člověk od člověka, i když je postup pro všechny stejný.
-POCET_PDF=$(( 4 + ZAK % 5 ))
+# Každá hodnota má vlastní sůl, jinak by o všech třech rozhodoval týž zbytek
+# a žáci n a n+20 by dostali shodné zadání (ověřeno, dělo se to).
+POCET_PDF=$(( 3 + $(lab_vyber 6 1 1) ))
 for i in $(seq 1 "$POCET_PDF"); do
   printf 'Faktura %02d/2026 — částka %d Kč\n' "$i" $(( 1200 + i * 137 )) \
     > "$(printf 'faktura-2026-%02d-%03d.pdf' $(( (i - 1) % 6 + 1 )) $(( 100 + i )))"
@@ -35,12 +37,12 @@ printf 'oddeleni;faktur\nsklad;3\n'        > prehled.csv
 
 # Jediný soubor se čtyřznakovým jménem — odpověď na úkol s globem ????
 KRATKA=(plan nota sken mapa kopi)
-printf 'Ruční poznámka, nemá příponu.\n' > "${KRATKA[$(( ZAK % 5 ))]}"
+printf 'Ruční poznámka, nemá příponu.\n' > "${KRATKA[$(( $(lab_vyber 5 1 2) - 1 ))]}"
 
 # Největší soubor v adresáři. Musí být zřetelně největší, aby výsledek
 # řazení podle velikosti nezáležel na tom, co si žák do adresáře přidá.
 VELKE=(archiv-2025.log ucetni-export.log sklad-export.log prenos-dat.log)
-VELKY="${VELKE[$(( ZAK % 4 ))]}"
+VELKY="${VELKE[$(( $(lab_vyber 4 1 3) - 1 ))]}"
 { for i in $(seq 1 4000); do printf 'radek %05d oddeleni sklad polozka %04d\n' "$i" $(( i % 97 )); done; } > "$VELKY"
 
 cat > "$SOUPIS" <<'FORMULAR'

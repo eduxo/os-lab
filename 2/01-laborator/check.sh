@@ -34,10 +34,13 @@ require_zaznam "$PREHLED" hostname "$JMENO" \
   "v přehledu je správné jméno stanice"
 require_zaznam "$PREHLED" jadro "$(uname -r)" \
   "v přehledu je verze jádra této stanice"
-require_zaznam_tvar "$PREHLED" pamet '^[0-9]+([.,][0-9]+)? ?(Gi|GiB|G|GB)$' \
-  "v přehledu je velikost paměti i s jednotkou"
-require_zaznam_tvar "$PREHLED" disk '^[0-9]+([.,][0-9]+)? ?(Gi|GiB|G|GB)$' \
-  "v přehledu je velikost systémového disku i s jednotkou"
+# Jednotka se liší podle obrazu i podle locale (5,7Gi i 5.7Gi), proto tvar
+# místo hodnoty. Mi a T jsou tu kvůli odchylnému obrazu — u předepsaných
+# 6 GB / ~49 G se neuplatní, ale FAIL kvůli jednotce by nikdo nerozklíčoval.
+require_zaznam_tvar "$PREHLED" pamet '^[0-9]+([.,][0-9]+)? ?(Mi|MiB|M|MB|Gi|GiB|G|GB|Ti|TiB|T|TB)$' \
+  "v přehledu je velikost paměti i s jednotkou (třeba 5,7Gi)"
+require_zaznam_tvar "$PREHLED" disk '^[0-9]+([.,][0-9]+)? ?(Mi|MiB|M|MB|Gi|GiB|G|GB|Ti|TiB|T|TB)$' \
+  "v přehledu je velikost systémového disku i s jednotkou (třeba 49G)"
 require_zaznam "$PREHLED" snapshot "cisty-system-$ZAK2" \
   "v přehledu je jméno snímku cisty-system-$ZAK2"
 
