@@ -23,26 +23,32 @@ else
 fi
 
 # ────────────────────────────────────────────────── parametry příkazu
+# Parametry se čtou jen v check.sh. Knihovnu sourcuje i start.sh, a ten může
+# mít vlastní argumenty — cvičení 2/13 se přes ně pod sudo znovu spouští.
+# Pozor: `set --` tady nepomůže, smazalo by argumenty i volajícímu skriptu.
+# Proto se celý rozbor jen přeskočí.
 _ceka_cislo=0
-for _a in "$@"; do
-  # Hodnota za `--krok` přijde až v další iteraci, proto ta příznaková
-  # proměnná. Bez ní by `--krok abc` tiše proběhlo jako kontrola celého
-  # cvičení a žák by si myslel, že ověřil jen svoji část.
-  if [ "$_ceka_cislo" -eq 1 ]; then _krok_filtr="$_a"; _ceka_cislo=0; continue; fi
-  case "$_a" in
-    --krok) _ceka_cislo=1 ;;
-    --krok=*) _krok_filtr="${_a#*=}" ;;
-    [0-9]*) [ -z "$_krok_filtr" ] && _krok_filtr="$_a" ;;
-    --help|-h)
-      echo "Použití: ./check.sh [--krok N]"
-      echo "  bez parametru  — ověří celé cvičení"
-      echo "  --krok N       — ověří jen část N (průběžná kontrola)"
-      exit 0 ;;
-    *) printf "  Neznámý parametr: %s. Použijte ./check.sh --help\n" "$_a"; exit 1 ;;
-  esac
-done
-if [ "$_ceka_cislo" -eq 1 ]; then
-  printf "  Za --krok chybí číslo části. Třeba: ./check.sh --krok 2\n"; exit 1
+if [ "$(basename "${0:-}")" = "check.sh" ]; then
+  for _a in "$@"; do
+    # Hodnota za `--krok` přijde až v další iteraci, proto ta příznaková
+    # proměnná. Bez ní by `--krok abc` tiše proběhlo jako kontrola celého
+    # cvičení a žák by si myslel, že ověřil jen svoji část.
+    if [ "$_ceka_cislo" -eq 1 ]; then _krok_filtr="$_a"; _ceka_cislo=0; continue; fi
+    case "$_a" in
+      --krok) _ceka_cislo=1 ;;
+      --krok=*) _krok_filtr="${_a#*=}" ;;
+      [0-9]*) [ -z "$_krok_filtr" ] && _krok_filtr="$_a" ;;
+      --help|-h)
+        echo "Použití: ./check.sh [--krok N]"
+        echo "  bez parametru  — ověří celé cvičení"
+        echo "  --krok N       — ověří jen část N (průběžná kontrola)"
+        exit 0 ;;
+      *) printf "  Neznámý parametr: %s. Použijte ./check.sh --help\n" "$_a"; exit 1 ;;
+    esac
+  done
+  if [ "$_ceka_cislo" -eq 1 ]; then
+    printf "  Za --krok chybí číslo části. Třeba: ./check.sh --krok 2\n"; exit 1
+  fi
 fi
 # "02" a "2" musí označovat tentýž krok; nesmysl musí spadnout hlasitě
 if [ -n "$_krok_filtr" ]; then
