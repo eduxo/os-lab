@@ -21,7 +21,7 @@ fi
 # a v jiném pořadí, takže verdikty od souseda nesedí.
 
 posta_P1() { cat <<'ZPRAVA'
-Od: IT podpora NAKOLENI <it-podpora@nakolenl.test>
+Od: IT podpora NetLab <it-podpora@net1ab.test>
 Komu: PRIJEMCE
 Datum: pondělí 8. září 2026, 7:42
 Předmět: Vaše schránka bude do 24 hodin zrušena
@@ -32,7 +32,7 @@ kapacita Vasi postovni schranky byla prekrocena. Pokud do 24 hodin
 neprovedete overeni uctu, bude schranka trvale zrusena a veskera
 posta smazana.
 
-Overeni provedete zde:  http://nakolenl.test/obnova-uctu
+Overeni provedete zde:  http://net1ab.test/obnova-uctu
 
 Dekujeme za pochopeni.
 Oddeleni IT
@@ -40,7 +40,7 @@ ZPRAVA
 }
 
 posta_P2() { cat <<'ZPRAVA'
-Od: Fakturace <fakturace@nakoleni-platby.test>
+Od: Fakturace <fakturace@netlab-platby.test>
 Komu: PRIJEMCE
 Datum: úterý 9. září 2026, 11:05
 Předmět: Neuhrazená faktura 2026/0473 — poslední upozornění
@@ -59,7 +59,7 @@ ZPRAVA
 }
 
 posta_P3() { cat <<'ZPRAVA'
-Od: Jiří Havel <reditel@nakoleni.secure-login.test>
+Od: Jiří Havel <reditel@netlab.secure-login.test>
 Komu: PRIJEMCE
 Datum: středa 10. září 2026, 15:58
 Předmět: Rychlá prosba
@@ -79,7 +79,7 @@ ZPRAVA
 }
 
 posta_L1() { cat <<'ZPRAVA'
-Od: Helpdesk NAKOLENI <helpdesk@nakoleni.test>
+Od: Helpdesk NetLab <helpdesk@netlab.test>
 Komu: PRIJEMCE
 Datum: pondělí 8. září 2026, 9:15
 Předmět: Odstávka tiskového serveru ve čtvrtek 11. 9.
@@ -98,7 +98,7 @@ ZPRAVA
 }
 
 posta_L2() { cat <<'ZPRAVA'
-Od: Personální oddělení <personalni@nakoleni.test>
+Od: Personální oddělení <personalni@netlab.test>
 Komu: PRIJEMCE
 Datum: úterý 9. září 2026, 8:30
 Předmět: Termíny školení BOZP pro nové zaměstnance
@@ -119,7 +119,7 @@ ZPRAVA
 }
 
 posta_L3() { cat <<'ZPRAVA'
-Od: Sklad <sklad@nakoleni.test>
+Od: Sklad <sklad@netlab.test>
 Komu: PRIJEMCE
 Datum: čtvrtek 11. září 2026, 13:20
 Předmět: Inventura — přístup do skladového systému
@@ -138,9 +138,9 @@ ZPRAVA
 
 # Očekávaná odpověď u každé zprávy. U podvodné je to slovo phishing
 # a doména odesílatele — tu žák nikde neuhodne, musí ji ze zprávy opsat.
-odpoved_P1() { echo "phishing nakolenl.test"; }
-odpoved_P2() { echo "phishing nakoleni-platby.test"; }
-odpoved_P3() { echo "phishing nakoleni.secure-login.test"; }
+odpoved_P1() { echo "phishing net1ab.test"; }
+odpoved_P2() { echo "phishing netlab-platby.test"; }
+odpoved_P3() { echo "phishing netlab.secure-login.test"; }
 odpoved_L1() { echo "ok"; }
 odpoved_L2() { echo "ok"; }
 odpoved_L3() { echo "ok"; }
@@ -164,7 +164,7 @@ PORADI=($(lab_vyber 3 3 13))
 for POZICE in 1 2 3; do
   IDX=${PORADI[$((POZICE-1))]}
   ZDROJ=${VYBER[$((IDX-1))]}
-  "posta_$ZDROJ" | sed "s/PRIJEMCE/novak$ZAK2@nakoleni.test/" > "$POSTA/$POZICE.txt"
+  "posta_$ZDROJ" | sed "s/PRIJEMCE/novak$ZAK2@netlab.test/" > "$POSTA/$POZICE.txt"
   # Do adresáře žáka ukládáme jen otisk správné odpovědi, ne odpověď samu.
   printf '%s %s\n' "$POZICE" "$(_otisk_odpovedi "$("odpoved_$ZDROJ")")" >> "$HYG/.zadani"
 done
@@ -173,7 +173,7 @@ done
 # každý má vlastní, takže se kódy mezi žáky neshodují.
 TAJEMSTVI="$(printf 'mfa-%s' "$ZAK" | _hash | cut -c1-16 | tr '0-9a-f' 'ABCDEFGHIJKLMNOP')"
 cat > "$HYG/mfa-klic.txt" <<MFA
-Klíč pro jednorázové kódy (TOTP) k účtu novak$ZAK2@nakoleni.test:
+Klíč pro jednorázové kódy (TOTP) k účtu novak$ZAK2@netlab.test:
 
   $TAJEMSTVI
 

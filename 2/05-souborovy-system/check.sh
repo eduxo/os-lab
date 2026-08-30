@@ -3,18 +3,18 @@
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-CESTY="$HOME/nakoleni/cesty"
+CESTY="$HOME/netlab/cesty"
 MAPA="$CESTY/mapa.txt"
 NALEZ="$CESTY/nalez.txt"
 VYCHOZI="$CESTY/sklad/2025/faktury"
 
 krok 1 "Prostředí"
 require_path "$CESTY" \
-  "adresář ~/nakoleni/cesty existuje" \
-  "chybí ~/nakoleni/cesty — spusťte ./start.sh"
+  "adresář ~/netlab/cesty existuje" \
+  "chybí ~/netlab/cesty — spusťte ./start.sh"
 require_soubor_neprazdny "$MAPA" \
   "formulář mapa.txt je na místě" \
-  "chybí ~/nakoleni/cesty/mapa.txt — spusťte ./start.sh"
+  "chybí ~/netlab/cesty/mapa.txt — spusťte ./start.sh"
 
 krok 2 "Mapa souborového systému"
 # Vzory jsou shovívavé k lomítku na konci — /etc i /etc/ znamenají totéž.
@@ -34,7 +34,7 @@ require_zaznam "$MAPA" ls-cesta "$(command -v ls)" \
 krok 3 "Cesty k nalezenému souboru"
 require_soubor_neprazdny "$NALEZ" \
   "formulář nalez.txt je na místě" \
-  "chybí ~/nakoleni/cesty/nalez.txt — spusťte ./start.sh"
+  "chybí ~/netlab/cesty/nalez.txt — spusťte ./start.sh"
 
 # Skutečné umístění hledaného souboru — čte se ze stromu, ne z tabulky.
 POCET_CILU=$(cd "$CESTY" 2>/dev/null && ls -1d provoz/*/*/inventura.txt 2>/dev/null | grep -c '')
@@ -65,7 +65,7 @@ if [ -n "$CIL" ]; then
   require_zaznam "$NALEZ" kod "$(lab_kod INV 5)" \
     "kód inventury z nalezeného souboru souhlasí"
 else
-  chyba "v ~/nakoleni/cesty nenacházím inventuru — spusťte ./reset.sh"
+  chyba "v ~/netlab/cesty nenacházím inventuru — spusťte ./reset.sh"
 fi
 
 vypis_souhrn

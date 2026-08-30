@@ -5,7 +5,7 @@
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-CESTY="$HOME/nakoleni/cesty"
+CESTY="$HOME/netlab/cesty"
 MAPA="$CESTY/mapa.txt"
 NALEZ="$CESTY/nalez.txt"
 
@@ -64,7 +64,7 @@ FORMULAR
 cat > "$NALEZ" <<'FORMULAR'
 # Nalezený soubor — vyplňte hodnoty za dvojtečku.
 # absolutni = celá cesta od kořene
-# relativni = cesta z adresáře ~/nakoleni/cesty/sklad/2025/faktury
+# relativni = cesta z adresáře ~/netlab/cesty/sklad/2025/faktury
 # kod       = kód inventury zapsaný v nalezeném souboru
 absolutni:
 relativni:
@@ -80,9 +80,9 @@ cat <<EOF
 
   Začněte tím, že se do adresáře přepnete:
 
-    cd ~/nakoleni/cesty
+    cd ~/netlab/cesty
 
-  Průběžnou kontrolu spouštějte odsud, ne z ~/nakoleni/cesty:
+  Průběžnou kontrolu spouštějte odsud, ne z ~/netlab/cesty:
 
     cd ~/os-lab/2/05-souborovy-system && ./check.sh --krok 1
 

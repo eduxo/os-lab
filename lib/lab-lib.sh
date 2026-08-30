@@ -90,7 +90,7 @@ export ZAK2 ZAK_UZIVATEL ZAK_IP ZAK_PORT
 lab_kod() {  # lab_kod PREFIX [sůl]
   # Sůl odlišuje kódy různých cvičení. Bez ní by měl žák ve všech cvičeních
   # tytéž čtyři číslice a druhý kód by uhodl, aniž by ho hledal.
-  printf '%s-%d' "${1:-NAK}" $(( (ZAK * 7919 + ${2:-0} * 104729) % 9000 + 1000 ))
+  printf '%s-%d' "${1:-NET}" $(( (ZAK * 7919 + ${2:-0} * 104729) % 9000 + 1000 ))
 }
 
 # Deterministický výběr K položek z N podle čísla žáka. Používá ho start.sh

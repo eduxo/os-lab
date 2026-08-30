@@ -29,8 +29,8 @@ require_zaznam_tvar "$ODPOVEDI" mfa-cas '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' \
   "zapsali jste čas, kdy kód platil"
 
 krok 3 "Vlastní klíč GPG"
-require_gpg_klic "novak$ZAK2@nakoleni.test" \
-  "v klíčence máte klíč pro novak$ZAK2@nakoleni.test"
+require_gpg_klic "novak$ZAK2@netlab.test" \
+  "v klíčence máte klíč pro novak$ZAK2@netlab.test"
 
 krok 4 "Rozbor služební pošty"
 if [ -f "$HYG/.zadani" ]; then

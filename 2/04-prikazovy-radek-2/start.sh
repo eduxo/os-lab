@@ -4,7 +4,7 @@
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-PRIJEM="$HOME/nakoleni/prijem"
+PRIJEM="$HOME/netlab/prijem"
 SOUPIS="$PRIJEM/soupis.txt"
 
 if [ -d "$PRIJEM" ]; then
@@ -62,9 +62,9 @@ cat <<EOF
 
   Začněte tím, že se do adresáře přepnete:
 
-    cd ~/nakoleni/prijem
+    cd ~/netlab/prijem
 
-  Průběžnou kontrolu spouštějte odsud, ne z ~/nakoleni/prijem:
+  Průběžnou kontrolu spouštějte odsud, ne z ~/netlab/prijem:
 
     cd ~/os-lab/2/04-prikazovy-radek-2 && ./check.sh --krok 1
 

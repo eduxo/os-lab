@@ -3,17 +3,17 @@
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-PRIJEM="$HOME/nakoleni/prijem"
+PRIJEM="$HOME/netlab/prijem"
 SOUPIS="$PRIJEM/soupis.txt"
 TRIDENI="$PRIJEM/trideni"
 
 krok 1 "Prostředí"
 require_path "$PRIJEM" \
-  "adresář ~/nakoleni/prijem existuje" \
-  "chybí ~/nakoleni/prijem — spusťte ./start.sh"
+  "adresář ~/netlab/prijem existuje" \
+  "chybí ~/netlab/prijem — spusťte ./start.sh"
 require_soubor_neprazdny "$SOUPIS" \
   "formulář soupis.txt je na místě" \
-  "chybí ~/nakoleni/prijem/soupis.txt — spusťte ./start.sh"
+  "chybí ~/netlab/prijem/soupis.txt — spusťte ./start.sh"
 
 krok 2 "Soupis přijaté pošty"
 # Správné odpovědi se počítají ze skutečného obsahu adresáře, ne z tabulky.

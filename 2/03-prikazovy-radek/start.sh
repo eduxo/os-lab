@@ -1,12 +1,17 @@
 #!/bin/bash
 # 2/03 — Příkazový řádek I. Prostředí: žákova stanice (bez kontejneru).
-# Vytvoří cvičnou strukturu firmy NAKOLENI v domovském adresáři.
+# Vytvoří cvičnou strukturu firmy NetLab v domovském adresáři.
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-BAZE="$HOME/nakoleni"
+BAZE="$HOME/netlab"
+# Hlídací značka je vlastní soubor tohoto cvičení, ne adresář ~/netlab.
+# Ten totiž zakládají i pozdější cvičení (2/04, 2/05) svými podadresáři —
+# a žák, který tohle cvičení zameškal a dělá ho až po nich, musí dostat
+# postavené prostředí, ne hlášku „už existuje".
+ZNACKA="$BAZE/archiv/2026/predavaci-protokol.txt"
 
-if [ -d "$BAZE" ]; then
+if [ -f "$ZNACKA" ]; then
   echo
   echo "  Prostředí už existuje v $BAZE — pokračujte, kde jste skončili."
   echo "  Chcete začít znovu?  ./reset.sh"
@@ -14,7 +19,7 @@ if [ -d "$BAZE" ]; then
   exit 0
 fi
 
-echo "  Připravuji pracovní adresář firmy NAKOLENI…"
+echo "  Připravuji pracovní adresář firmy NetLab…"
 
 mkdir -p "$BAZE"/{ucetni,sklad,vedeni/porady,archiv/2025/faktury,archiv/2026,reklamace}
 # `reklamace` zůstává prázdná schválně — je to odpověď na třetí otázku v poznámkách
@@ -30,7 +35,7 @@ for m in 01 02 03; do printf 'Faktura %s/2025\n' "$m" > "$BAZE/archiv/2025/faktu
 # NECHRÁNÍ proti vygenerování: tenhle skript je ve veřejném repozitáři, takže
 # si kód spočítá každý, kdo ho najde. Hodnocení proto stojí i na poznamky.txt,
 # kde žák dokládá cesty a počty, které bez projití struktury nezjistí.
-KOD="$(lab_kod NAK)"
+KOD="$(lab_kod NET)"
 printf 'Poznámka pro nového správce.\n\nPřístupový kód pro dnešní cvičení: %s\n' "$KOD" \
      > "$BAZE/archiv/2026/predavaci-protokol.txt"
 
@@ -46,9 +51,9 @@ cat <<EOF
 
   Začněte tím, že se do adresáře přepnete:
 
-    cd ~/nakoleni
+    cd ~/netlab
 
-  Průběžnou kontrolu spouštějte odsud, ne z ~/nakoleni:
+  Průběžnou kontrolu spouštějte odsud, ne z ~/netlab:
 
     cd ~/os-lab/2/03-prikazovy-radek && ./check.sh --krok 1
 

@@ -84,7 +84,7 @@ lxc exec "$KONT" -- bash -c "
 
 lxc exec "$KONT" -- tee /opt/hlidac/hlidac.sh >/dev/null <<'HLIDAC'
 #!/bin/bash
-# Hlídač NAKOLENI — hlásí stav na portu a zapisuje do logu.
+# Hlídač NetLab — hlásí stav na portu a zapisuje do logu.
 # Port se předává proměnnou prostředí HLIDAC_PORT.
 PORT="${HLIDAC_PORT:-9000}"
 LOG=/var/log/hlidac/hlidac.log
