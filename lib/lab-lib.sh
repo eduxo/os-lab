@@ -268,7 +268,7 @@ _zaznam() {  # _zaznam soubor klic  → vypíše hodnotu bez okolních mezer
     | sed -E 's/^[[:space:]]*[^:]*:[[:space:]]*//; s/[[:space:]]+$//'
 }
 
-require_zaznam() {  # require_zaznam soubor klic hodnota [popis]
+require_zaznam() {  # require_zaznam soubor klic hodnota [popis] [popis_fail]
   # Hláška [FAIL] nikdy nevypisuje očekávanou hodnotu. Průběžná kontrola je
   # checkpoint, ne nápověda — jinak by stačilo spustit check.sh a odpovědi
   # z něj opsat. Co má žák hledat, patří do zadání, ne sem.
@@ -276,14 +276,14 @@ require_zaznam() {  # require_zaznam soubor klic hodnota [popis]
   # Nevyplněný řádek nesmí projít ani tehdy, když je prázdná i očekávaná
   # hodnota (třeba když se ji nepodařilo přečíst ze stanice).
   if [ -n "$h" ] && [ "$h" = "$3" ]; then _zapis PASS "${4:-$2: $3}"
-  else _zapis FAIL "${4:-řádek '$2:' nesouhlasí} (máte '${h:-nic}')"; fi
+  else _zapis FAIL "${5:-zatím nesedí — ${4:-řádek '$2:'}} (máte '${h:-nic}')"; fi
 }
 
-require_zaznam_tvar() {  # require_zaznam_tvar soubor klic regulární_výraz [popis]
+require_zaznam_tvar() {  # soubor klic regulární_výraz [popis] [popis_fail]
   local h; h="$(_zaznam "$1" "$2")"
   if [ -n "$h" ] && printf '%s' "$h" | grep -qE "$3"; then
     _zapis PASS "${4:-$2: $h}"
-  else _zapis FAIL "${4:-řádek '$2:' nemá očekávaný tvar} (máte '${h:-nic}')"; fi
+  else _zapis FAIL "${5:-zatím nesedí — ${4:-řádek '$2:'}} (máte '${h:-nic}')"; fi
 }
 
 # Otisk textu. Používá ho i vypis_souhrn — na macOS a v minimálních
@@ -291,6 +291,21 @@ require_zaznam_tvar() {  # require_zaznam_tvar soubor klic regulární_výraz [p
 _hash() {
   if command -v sha256sum >/dev/null; then sha256sum | cut -d' ' -f1
   else shasum -a 256 | cut -d' ' -f1; fi
+}
+
+require_zaznam_cesta() {  # soubor klic cesta_relativne zaklad [popis] [popis_fail]
+  # Cestu žák opisuje z výpisu `find`, takže začíná tečkou a lomítkem. Někdo
+  # napíše absolutní, někdo bez tečky — uznáváme všechny tři podoby. Smysl
+  # úkolu je soubor najít, ne trefit zápis. (Kde na zápisu záleží, protože
+  # se učí rozdíl absolutní/relativní, se použije require_zaznam.)
+  local h n
+  h="$(_zaznam "$1" "$2")"
+  # Uznáváme i zápis s vlnovkou — zadání ji používá všude, takže ji žák
+  # přirozeně napíše i do odpovědi.
+  n="${h#./}"; n="${n#"$HOME"/}"; n="${n#\~/}"; n="${n#"$4"/}"
+  n="${n#"${4#"$HOME"/}"/}"
+  if [ -n "$h" ] && [ "$n" = "$3" ]; then _zapis PASS "${5:-$2: nalezeno}"
+  else _zapis FAIL "${6:-zatím nesedí — ${5:-cesta u klíče $2}} (máte '${h:-nic}')"; fi
 }
 
 require_soubor_neprazdny() {  # cesta [popis_pass] [popis_fail]
@@ -310,9 +325,11 @@ require_pocet_souboru() {  # adresar vzor N [popis]
   else _zapis FAIL "${4:-v $1 má být $3 položek typu $2} (je jich $n)"; fi
 }
 
-require_prikaz() {  # jmeno [popis]
+require_prikaz() {  # jmeno [popis_pass] [popis_fail]
+  # FAIL má vlastní výchozí text. Se sdíleným popisem by hláška zněla
+  # „[FAIL] nástroj git je nainstalovaný", což je oznamovací věta, a navíc lež.
   if v_cili "command -v '$1' >/dev/null"; then _zapis PASS "${2:-nástroj $1 je k dispozici}"
-  else _zapis FAIL "${2:-nástroj $1 na stanici chybí — řekněte o tom vyučujícímu}"; fi
+  else _zapis FAIL "${3:-nástroj $1 na stanici chybí — řekněte o tom vyučujícímu}"; fi
 }
 
 require_hostname() {  # ocekavane_jmeno
