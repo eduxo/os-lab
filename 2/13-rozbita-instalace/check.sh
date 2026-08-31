@@ -37,6 +37,10 @@ poznamka "balíček, který máte nainstalovat: ${_B}$CIL${_0}"
 krok 2 "Odstranění závad"
 if [ -f "$LAB_ZALOHY/zavedeno" ]; then
   HOTOVO=0; CELKEM=0
+  # Soubor patří rootovi (jsou v něm kódy závad), takže se čte přes sudo.
+  # Bez toho by přesměrování tiše selhalo, smyčka by se neprovedla a celá
+  # tahle část by zmizela ze souhrnu — lab by šel „splnit" bez opravy.
+  SEZNAM_ZAVAD="$(cti_jako_root "$LAB_ZALOHY/zavedeno")"
   while read -r Z; do
     [ -n "$Z" ] || continue
     CELKEM=$((CELKEM + 1))
@@ -47,7 +51,7 @@ if [ -f "$LAB_ZALOHY/zavedeno" ]; then
       # Co přesně je špatně, se neříká. Od toho je diagnostika.
       chyba "závada $CELKEM pořád trvá"
     fi
-  done < "$LAB_ZALOHY/zavedeno"
+  done <<< "$SEZNAM_ZAVAD"
   [ "$HOTOVO" -lt "$CELKEM" ] && \
     poznamka "začněte od 'sudo apt update' — chybová hláška říká, kterým směrem hledat"
 else

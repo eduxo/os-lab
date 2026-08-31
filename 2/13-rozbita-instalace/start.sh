@@ -23,7 +23,7 @@ if [ "${1:-}" = "--zaved" ]; then
 
   if [ ! -f "$LAB_ETC_APT/sources.list.d/ubuntu.sources" ]; then
     echo "  Na téhle stanici chybí $LAB_ETC_APT/sources.list.d/ubuntu.sources." >&2
-    echo "  Cvičení počítá s Ubuntu 24.04 — řekněte o tom vyučujícímu." >&2
+    echo "  Cvičení počítá s Ubuntu 26.04 — řekněte o tom vyučujícímu." >&2
     exit 1
   fi
 

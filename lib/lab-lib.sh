@@ -384,17 +384,27 @@ negative_service_not_root() {
   else _zapis PASS "$1 neběží pod rootem"; fi
 }
 
-pouzil_diagnostiku() {  # měkká kontrola: sáhl žák po diagnostice, než začal opravovat?
+# Čtení souboru, který patří rootovi. Diagnostická cvičení si seznam
+# zavedených závad schválně chrání před žákem — kontrola ho ale číst musí.
+# Nejdřív bez dotazu (sudo si heslo chvíli pamatuje), teprve pak se ptáme.
+cti_jako_root() {  # cti_jako_root cesta
+  sudo -n cat "$1" 2>/dev/null || sudo cat "$1" 2>/dev/null
+}
+
+pouzil_diagnostiku() {  # [vzor]  měkká kontrola: sáhl žák po diagnostice, než začal opravovat?
   # v_cili běží v kontejneru jako root, takže ~ je /root — historii žáka
   # musíme hledat v jeho domovském adresáři
   local hist h
   if [ -n "$LAB_KONTEJNER" ]; then hist="/home/$LAB_UZIVATEL/.bash_history"
   else hist="$HOME/.bash_history"; fi
   h="$(v_cili "cat '$hist' 2>/dev/null")"
-  if printf '%s' "$h" | grep -qE 'systemctl (status|cat)|journalctl|systemd-analyze'; then
+  # Vzor se dá předat — každé diagnostické cvičení má jiné nástroje.
+  local vzor="${1:-systemctl (status|cat)|journalctl|systemd-analyze}"
+  local tip="${2:-příště začněte od 'systemctl status' a 'journalctl -xeu'}"
+  if printf '%s' "$h" | grep -qE "$vzor"; then
     _zapis PASS "před opravou jste sáhli po diagnostice"
   else
-    poznamka "${_M}tip:${_0} příště začněte od 'systemctl status' a 'journalctl -xeu' —"
+    poznamka "${_M}tip:${_0} $tip —"
     poznamka "     rychleji uvidíte, kde je příčina"
   fi
 }

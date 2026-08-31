@@ -51,7 +51,7 @@ if [ -f "$ZDROJE" ]; then
   fi
 else
   chyba "na této stanici chybí $ZDROJE — řekněte o tom vyučujícímu"
-  poznamka "Ubuntu 24.04 má zdroje v tomhle souboru, starší formát tu být nemusí"
+  poznamka "Novější Ubuntu má zdroje v tomhle souboru (deb822), starší formát tu být nemusí"
 fi
 
 vypis_souhrn

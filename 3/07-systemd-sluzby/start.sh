@@ -4,7 +4,7 @@ set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
 KONT="sluzby-$ZAK2"
-OBRAZ="ubuntu-24.04"          # lokální alias z šablony VM (bez stahování)
+OBRAZ="ubuntu-26.04"          # lokální alias z šablony VM (bez stahování)
 
 if lxc info "$KONT" >/dev/null 2>&1; then
   STAV="$(lxc info "$KONT" | awk '/^Status/{print tolower($2)}')"
@@ -51,7 +51,7 @@ lxc exec "$KONT" -- bash -c \
   "command -v sshd >/dev/null || { apt-get update -qq && apt-get install -y -qq openssh-server; }" \
   || { echo "  SSH server se nepodařilo nainstalovat — zavolejte vyučujícího."; exit 1; }
 lxc exec "$KONT" -- systemctl enable --now ssh >/dev/null 2>&1
-# Ubuntu 24.04 může mít SSH socket-aktivované (ssh.socket místo ssh.service)
+# Novější Ubuntu může mít SSH socket-aktivované (ssh.socket místo ssh.service)
 lxc exec "$KONT" -- bash -c "systemctl is-active --quiet ssh || systemctl is-active --quiet ssh.socket" \
   || { echo "  SSH na serveru neběží — zavolejte vyučujícího."; exit 1; }
 

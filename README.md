@@ -10,7 +10,7 @@ cvičení** najdete na [eduxo.cz](https://www.eduxo.cz).
 
 ## Co k práci potřebujete
 
-Virtuální stroj **Ubuntu MATE 24.04 LTS** s nainstalovaným **LXD**, který dostanete
+Virtuální stroj **Ubuntu Server 26.04 LTS** (s prostředím MATE) a nainstalovaným **LXD**, který dostanete
 od vyučujícího. Uvnitř něj běží vaše laboratoř — jednotlivá cvičení se odehrávají
 v kontejnerech, které si skripty vytvoří a zase smažou.
 
@@ -40,8 +40,8 @@ ze společného repozitáře.
 
 ## Práce s cvičením
 
-Každé cvičení má tři skripty. Číslo cvičení najdete v jeho zadání — například
-`3/12` je dvanácté cvičení třetího ročníku.
+Každé cvičení má čtyři skripty. Číslo cvičení najdete v jeho zadání —
+například `3/12` je dvanácté cvičení třetího ročníku.
 
 ```bash
 cd ~/os-lab/3/12-sluzba-nenabehla
@@ -79,7 +79,39 @@ stavu můžete kdykoli:
 ./reset.sh
 ```
 
-U diagnostických cvičení tím dostanete **novou sadu závad**, ne hotové řešení.
+U diagnostických cvičení tím dostanete **tutéž sadu závad znovu**, ne hotové
+řešení — sada se odvozuje z vašeho čísla, takže je pro vás pokaždé stejná.
+
+## Windowsová cvičení
+
+Některá cvičení běží ve **windowsové virtuální stanici**, kde není bash ani
+tenhle repozitář naklonovaný. Skripty se tam proto stahují jednotlivě.
+Poznáte je podle písmene v čísle — `2/14a`, `2/18a`.
+
+V PowerShellu **spuštěném jako správce**:
+
+```powershell
+mkdir C:\os-lab -Force
+cd C:\os-lab
+Invoke-WebRequest -UseBasicParsing `
+  -Uri https://raw.githubusercontent.com/eduxo/os-lab/main/stahni.ps1 `
+  -OutFile stahni.ps1
+```
+
+Než skript spustíte, **přečtěte si ho** (`notepad stahni.ps1`) — stahujete kód
+z internetu a chystáte se ho pustit s právy správce. Pak:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stahni.ps1 -Cvic W1
+cd C:\os-lab\2\14a-windows-start
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+Průběžná kontrola se spouští `-Krok N` místo `--krok N`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\check.ps1 -Krok 2
+```
 
 ## Struktura repozitáře
 
@@ -89,6 +121,9 @@ os-lab/
   3/              cvičení 3. ročníku — servery a síťové služby
   4/              cvičení 4. ročníku — správa dat a identit
   lib/            sdílené funkce pro ověřovací skripty
+                  lab-lib.sh   pro linuxová cvičení
+                  lab-lib.ps1  pro windowsová cvičení
+  stahni.ps1      stahovač skriptů do windowsové stanice
 ```
 
 Do složky `lib/` chodit nemusíte — obsahuje jen společné funkce, které
@@ -127,8 +162,14 @@ místě, ne v šedesáti skriptech.
   musí být schopen pokračovat.
 - **Úkoly jsou odvozené od čísla žáka** (`$ZAK`) — jména účtů, adresy i velikosti
   se u každého liší, takže cizí řešení neprojde.
-- **Sada závad u diagnostických cvičení je v repozitáři zakódovaná.** Ne kvůli
-  utajení, ale aby řešení nebylo na dosah jedním pohledem do skriptu.
+- **Sada závad u diagnostických cvičení je v repozitáři čitelná** (`poruchy.sh`).
+  Zakódovat ji nemá smysl: kód, který závadu zavádí, tu být musí, takže by
+  šifra chránila popisky, ne podstatu. Odolnost dělá to, že závada je v žákově
+  běžícím systému a najít se musí tam. Seznam **zavedených** závad konkrétního
+  žáka je proti tomu root-only.
+- **Windowsová cvičení mají vlastní knihovnu** `lib/lab-lib.ps1` se stejným
+  chováním i výstupem. Cílem je **Windows PowerShell 5.1**, ne PowerShell 7 —
+  na Windows 11 je ve výchozím stavu jen ta první.
 
 ## Licence
 
