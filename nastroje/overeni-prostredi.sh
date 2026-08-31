@@ -66,7 +66,13 @@ else
   LXD=1
   info "Verze: $(lxc version 2>/dev/null | head -1)"
   SD=$(lxc storage list -f csv 2>/dev/null | awk -F, 'NR==1{print $2}')
-  info "Storage driver: ${SD:-neznámý}"
+  if [ -z "$SD" ]; then
+    varuj "LXD je nainstalovaný, ale NEinicializovaný — chybí úložiště i síť."
+    info "Testy 3-5 přeskočím. Spusť nejdřív:  bash ~/os-lab/nastroje/priprava-stanice.sh"
+    zapis "POZOR" "LXD" "není inicializovaný — spusť priprava-stanice.sh"
+    LXD=0
+  fi
+  info "Storage driver: ${SD:-—}"
   if [ "$SD" = "zfs" ]; then
     varuj "ZFS backend → Docker uvnitř kontejneru spadne do vfs (pomalé)"
     info "Doporučení plánu: Docker provozovat PŘÍMO ve VM, ne v kontejneru."
@@ -76,11 +82,11 @@ else
     zapis "OK" "LXD storage" "${SD:-?}"
   fi
   echo "  Vytvářím testovací kontejner (může chvíli trvat, stahuje obraz)..."
-  if lxc launch ubuntu:24.04 overeni-test >/dev/null 2>&1; then
+  if lxc launch ubuntu:26.04 overeni-test >/dev/null 2>&1; then
     ok "Kontejner overeni-test běží"
     sleep 8
   else
-    chyba "Kontejner se nepodařilo spustit — zkontroluj 'lxc launch ubuntu:24.04' ručně"
+    chyba "Kontejner se nepodařilo spustit — zkontroluj, že LXD je inicializovaný: 'lxd init --minimal' nebo priprava-stanice.sh"
     LXD=0; zapis "NE" "LXD launch" "kontejner nelze spustit"
   fi
 fi
