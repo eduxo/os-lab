@@ -39,13 +39,46 @@ SUDO_KEEPALIVE=$!
 trap 'kill "$SUDO_KEEPALIVE" 2>/dev/null' EXIT
 
 # ------------------------------------------------------------ 1. aktualizace
-krok "1/8 Aktualizace systému"
+krok "1/9 Aktualizace systému"
 info "(na pomalém síťovém disku to může trvat i 10 minut)"
 sudo apt-get update -qq && ok "Seznamy balíčků aktualizovány"
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade && ok "Systém aktualizován"
 
 # ------------------------------------------------------------ 2. balíčky
-krok "2/8 Grafické prostředí MATE"
+krok "2/9 Kořenový svazek — využít celý disk"
+# Instalátor Ubuntu Serveru vytvoří LVM svazek jen na část disku (typicky
+# polovinu) a zbytek nechá ve skupině nevyužitý. Bez rozšíření dojde místo
+# někdy uprostřed roku — obrazy kontejnerů a snapshoty rostou.
+ROOT_SRC="$(findmnt -no SOURCE / 2>/dev/null)"
+ROOT_FS="$(findmnt -no FSTYPE / 2>/dev/null)"
+if ! command -v lvs >/dev/null 2>&1 || ! sudo lvs "$ROOT_SRC" >/dev/null 2>&1; then
+  info "Kořen neleží na LVM ($ROOT_SRC) — rozšiřovat není co, přeskakuji."
+else
+  VG="$(sudo lvs --noheadings -o vg_name "$ROOT_SRC" 2>/dev/null | tr -d ' ')"
+  VOLNO="$(sudo vgs --noheadings -o vg_free --units g "$VG" 2>/dev/null | tr -d ' g<')"
+  VOLNO_INT="${VOLNO%%.*}"
+  info "Skupina svazků: $VG · volné místo: ${VOLNO:-0} GB"
+  if [ "${VOLNO_INT:-0}" -lt 1 ]; then
+    ok "Svazek už zabírá celý disk"
+  else
+    varuj "Ve skupině leží nevyužitých ${VOLNO_INT} GB."
+    info "Rozšíření proběhne za provozu, bez restartu a bez ztráty dat."
+    read -r -p "    Rozšířit kořenový svazek na celý disk? [A/n] " ODP
+    if [[ ! "$ODP" =~ ^[nN]$ ]]; then
+      sudo lvextend -l +100%FREE "$ROOT_SRC" >/dev/null 2>&1 && ok "Svazek rozšířen"
+      case "$ROOT_FS" in
+        ext*) sudo resize2fs "$ROOT_SRC" >/dev/null 2>&1 && ok "Souborový systém zvětšen (ext)" ;;
+        xfs)  sudo xfs_growfs / >/dev/null 2>&1 && ok "Souborový systém zvětšen (xfs)" ;;
+        *)    varuj "Neznámý souborový systém $ROOT_FS — zvětši ho ručně" ;;
+      esac
+      info "Nyní volno: $(df -h --output=avail / | tail -1 | tr -d ' ')"
+    else
+      varuj "Přeskočeno — počítej s tím při stavbě šablony"
+    fi
+  fi
+fi
+
+krok "3/9 Grafické prostředí MATE"
 if dpkg -s ubuntu-mate-core >/dev/null 2>&1 || dpkg -s mate-desktop-environment >/dev/null 2>&1; then
   ok "Prostředí MATE už je nainstalované"
 else
@@ -63,7 +96,7 @@ else
   fi
 fi
 
-krok "3/8 Nástroje pro laby"
+krok "4/9 Nástroje pro laby"
 BALICKY=(
   openssh-server        # laby 3/3, 3/4 (SSH)
   ufw                   # lab 3/13 (firewall)
@@ -84,7 +117,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${BALICKY[@]}" \
 info "Pozn.: Docker se instaluje až v labu 3/21 — je to učivo, ne infrastruktura."
 
 # ------------------------------------------------------------ 3. LXD
-krok "4/8 LXD"
+krok "5/9 LXD"
 if command -v lxc >/dev/null 2>&1; then
   ok "LXD už je nainstalován ($(lxc version 2>/dev/null | head -1))"
 else
@@ -101,7 +134,7 @@ else
 fi
 
 # ------------------------------------------------------------ 4. lxd init
-krok "5/8 Inicializace LXD"
+krok "6/9 Inicializace LXD"
 if sudo lxc storage list -f csv 2>/dev/null | grep -q .; then
   ok "LXD je už inicializován — přeskakuji"
 else
@@ -135,7 +168,7 @@ PRESEED
 fi
 
 # ------------------------------------------------------------ 5. síť netlab
-krok "6/8 Izolovaná síť netlab (pro laby DNS a DHCP)"
+krok "7/9 Izolovaná síť netlab (pro laby DNS a DHCP)"
 if sudo lxc network list -f csv 2>/dev/null | grep -q '^netlab,'; then
   ok "Síť netlab už existuje"
 else
@@ -145,7 +178,7 @@ else
 fi
 
 # ------------------------------------------------------------ 6. obrazy
-krok "7/8 Předstažení obrazů do lokální cache"
+krok "8/9 Předstažení obrazů do lokální cache"
 info "Kvůli síťovému disku a 30 žákům naráz — v hodině se pak nestahuje nic."
 if sudo lxc image list local: -f csv 2>/dev/null | grep -q 'ubuntu-26.04'; then
   ok "Obraz ubuntu-26.04 je už v lokální cache"
@@ -157,7 +190,7 @@ else
 fi
 
 # ------------------------------------------------------------ 7. heslo roota
-krok "8/8 Heslo uživatele root"
+krok "9/9 Heslo uživatele root"
 if sudo passwd -S root 2>/dev/null | grep -qE ' (L|NP) '; then
   varuj "Účet root je zamčený."
   info "Lab 4/7 (oprava fstab z emergency shellu) na tom může ztroskotat —"

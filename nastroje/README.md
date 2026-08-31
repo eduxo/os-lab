@@ -17,10 +17,16 @@ bash ~/os-lab/nastroje/overeni-prostredi.sh   # 2. ověří předpoklady
 ```
 
 ### `priprava-stanice.sh`
-Aktualizuje systém, doinstaluje **prostředí MATE** (`ubuntu-mate-core`, ptá se —
-stahuje stovky MB), nástroje pro laby, **LXD** s úložištěm btrfs, izolovanou síť
-`netlab` pro cvičení s DNS a DHCP, předstáhne obraz kontejnerů do lokální cache
-a nabídne nastavení hesla roota.
+Devět kroků: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
+**prostředí MATE** (`ubuntu-mate-core`, ptá se — stahuje stovky MB) · nástroje pro
+laby · **LXD** s úložištěm btrfs · inicializace LXD · izolovaná síť `netlab` pro
+cvičení s DNS a DHCP · předstažení obrazu kontejnerů do lokální cache ·
+nastavení hesla roota.
+
+> **K čemu je rozšíření svazku:** instalátor Ubuntu Serveru vytvoří LVM svazek
+> jen na část disku — na 100GB disku typicky 48 GB — a zbytek nechá ve skupině
+> ležet. Bez rozšíření dojde místo uprostřed roku, až porostou obrazy kontejnerů
+> a snapshoty. Skript to pozná a nabídne opravu; běží za provozu, bez restartu.
 
 Je idempotentní — opakované spuštění jen doplní, co chybí.
 
