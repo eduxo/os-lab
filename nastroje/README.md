@@ -1,0 +1,48 @@
+# Nástroje pro stavbu prostředí
+
+Skripty, kterými se připraví a ověří stanice. **Nejsou to cvičení** — spouští
+je vyučující při stavbě šablony, ne žáci v hodině.
+
+## Postup na čisté instalaci
+
+Výchozí stav: **Ubuntu Server 26.04 LTS** (x86_64 na školní stanici,
+arm64 na vývojové VM — postup je stejný).
+
+```bash
+git clone https://github.com/eduxo/os-lab.git ~/os-lab
+
+bash ~/os-lab/nastroje/priprava-stanice.sh    # 1. připraví systém
+# odhlásit a znovu přihlásit (skupina lxd)
+bash ~/os-lab/nastroje/overeni-prostredi.sh   # 2. ověří předpoklady
+```
+
+### `priprava-stanice.sh`
+Aktualizuje systém, doinstaluje **prostředí MATE** (`ubuntu-mate-core`, ptá se —
+stahuje stovky MB), nástroje pro laby, **LXD** s úložištěm btrfs, izolovanou síť
+`netlab` pro cvičení s DNS a DHCP, předstáhne obraz kontejnerů do lokální cache
+a nabídne nastavení hesla roota.
+
+Je idempotentní — opakované spuštění jen doplní, co chybí.
+
+### `overeni-prostredi.sh`
+Ověří, co ze statické analýzy nerozhodneme: který renderer řídí síť, jestli
+v nepřivilegovaném kontejneru funguje WireGuard a `ufw`, jaký má LXD úložný
+ovladač, jestli na `lxdbr0` běží vlastní `dnsmasq` a jestli je účet root
+odemčený. Vytvoří si dočasný kontejner a na konci ho smaže.
+
+### `test-fstab.sh`
+⚠️ **Jediný destruktivní nástroj.** Záměrně rozbije `/etc/fstab`, aby se ověřilo,
+že se jde dostat do nouzového shellu (předpoklad cvičení 4. ročníku).
+
+**Nikdy přes SSH ani XRDP** bez konzolového přístupu — v nouzovém režimu neběží
+síť. Skript vzdálenou relaci pozná a zastaví se. Před spuštěním udělej snapshot.
+
+```bash
+bash ~/os-lab/nastroje/test-fstab.sh stav      # co je teď v fstab
+bash ~/os-lab/nastroje/test-fstab.sh rozbij    # ptá se na potvrzení
+bash ~/os-lab/nastroje/test-fstab.sh oprav     # vrátí zpátky
+```
+
+## Až je hotovo
+
+Vypnout VM a udělat snapshot `cista-sablona` — z něj vycházejí žákovské kopie.
