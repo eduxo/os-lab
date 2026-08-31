@@ -1,0 +1,45 @@
+# Balíčky, které musí být v šabloně VM.
+#
+# Čte je priprava-stanice.sh. Když nové cvičení potřebuje balíček, přidej ho
+# SEM (ne do skriptu) i s poznámkou, který lab ho potřebuje — jinak se za rok
+# nepozná, co se ještě používá a co je zbytek.
+#
+# Formát: jeden balíček na řádek, komentáře za #.
+#
+# Po doplnění stačí ve VM:
+#     cd ~/os-lab && git pull && bash nastroje/priprava-stanice.sh
+# Skript doinstaluje jen to, co chybí — platí i pro už rozdané žákovské VM.
+
+# ── základ, potřebuje víc labů ────────────────────────────────────────
+openssh-server      # 3/03, 3/04 — vzdálená správa; taky cesta do kontejnerů
+git                 # 3/06 — verzování; a žáci ho používají každou hodinu
+curl                # obecně
+wget                # obecně
+tree                # orientace v adresářích (2/05, 2/06)
+htop                # 2/21 — procesy
+vim                 # 2/07 — editory
+nano                # 2/07 — editory (v Ubuntu bývá, jistota)
+chrony              # čas — bez něj se rozejdou logy i ověřování
+
+# ── 2. ročník ─────────────────────────────────────────────────────────
+acl                 # 2/17 — rozšířená oprávnění (getfacl, setfacl)
+gnupg               # 2/12 — podpisy a klíče
+
+# ── 3. ročník ─────────────────────────────────────────────────────────
+ufw                 # 3/13 — firewall
+# bind9             # 3/14 — DNS server        (doplnit při psaní labu)
+# kea-dhcp4-server  # 3/15 — DHCP server       (rozhodnout: kea vs isc-dhcp)
+# apache2           # 3/16, 3/17 — web server
+# samba             # 3/19 — file server
+# docker.io         # 3/21 — kontejnery jako učivo
+
+# ── 4. ročník ─────────────────────────────────────────────────────────
+mdadm               # 4/02 — RAID
+lvm2                # 4/05 — LVM
+cryptsetup          # 4/04 — LUKS
+restic              # 4/08 — zálohování
+wireguard-tools     # 4/12 — VPN
+shellcheck          # 3/20 — kontrola skriptů
+# ansible           # 4/17 — automatizace
+# slapd, ldap-utils, sssd   # 4/10 — centrální autentizace
+# prometheus, grafana       # 4/16 — monitoring (grafana není v repozitářích Ubuntu)

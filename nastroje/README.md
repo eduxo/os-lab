@@ -30,6 +30,16 @@ nastavení hesla roota.
 
 Je idempotentní — opakované spuštění jen doplní, co chybí.
 
+### `balicky.txt`
+Seznam balíčků, které musí být v šabloně. Čte ho `priprava-stanice.sh`.
+**Nové cvičení = nový řádek sem**, i s poznámkou, který lab balíček potřebuje.
+Zakomentované řádky jsou příprava na 3. a 4. ročník.
+
+Doplnění se do už rozdaných žákovských VM dostane přes:
+```bash
+cd ~/os-lab && git pull && bash nastroje/priprava-stanice.sh
+```
+
 ### `overeni-prostredi.sh`
 Ověří, co ze statické analýzy nerozhodneme: který renderer řídí síť, jestli
 v nepřivilegovaném kontejneru funguje WireGuard a `ufw`, jaký má LXD úložný

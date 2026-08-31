@@ -97,24 +97,18 @@ else
 fi
 
 krok "4/9 Nástroje pro laby"
-BALICKY=(
-  openssh-server        # laby 3/3, 3/4 (SSH)
-  ufw                   # lab 3/13 (firewall)
-  wireguard-tools       # lab 4/12 (VPN)
-  git                   # lab 3/6
-  curl wget             # obecně
-  tree htop             # orientace, procesy
-  vim nano              # lab 2/7 (editory)
-  mdadm                 # lab 4/2 (RAID)
-  lvm2                  # lab 4/5 (LVM)
-  cryptsetup            # lab 4/4 (LUKS)
-  restic                # lab 4/8 (zálohy)
-  shellcheck            # lab 3/20 (Bash)
-  chrony                # čas — bez něj se rozjedou logy i ověřování
-)
+# Seznam je v nastroje/balicky.txt — tam se doplňuje při psaní nových labů.
+SEZNAM="$(dirname "$0")/balicky.txt"
+if [ ! -f "$SEZNAM" ]; then
+  chyba "Chybí $SEZNAM — bez něj nevím, co instalovat."; exit 1
+fi
+mapfile -t BALICKY < <(sed 's/#.*//' "$SEZNAM" | tr -s ' ' '\n' | grep -v '^$')
+info "Ze seznamu: ${#BALICKY[@]} balíčků"
+
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${BALICKY[@]}" \
-  && ok "Nainstalováno ${#BALICKY[@]} balíčků"
+  && ok "Nainstalováno ${#BALICKY[@]} balíčků" || chyba "Instalace balíčků selhala"
 info "Pozn.: Docker se instaluje až v labu 3/21 — je to učivo, ne infrastruktura."
+info "Nové balíčky se přidávají do nastroje/balicky.txt, ne sem."
 
 # ------------------------------------------------------------ 3. LXD
 krok "5/9 LXD"
