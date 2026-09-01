@@ -8,10 +8,32 @@ ARCH="$HOME/netlab/archiv"
 DATA="$ARCH/data"
 FORMULAR="$ARCH/prehled.txt"
 
+vyrob_formular() {
+  cat > "$FORMULAR" <<'FORMULAR_KONEC'
+# Přehled archivace — vyplňte hodnoty za dvojtečku.
+# souboru      = kolik souborů je uvnitř archivu zaloha.tar
+# velikost-tar = velikost zaloha.tar v bajtech
+# velikost-tgz = velikost zaloha.tar.gz v bajtech
+# mensi        = který archiv je menší (tar nebo tgz)
+souboru:
+velikost-tar:
+velikost-tgz:
+mensi:
+FORMULAR_KONEC
+}
+
+# Prostředí, které už stojí, se nepřestavuje — jen se doplní formulář,
+# pokud si ho žák smazal. Bez toho ho kontrola posílá na ./start.sh,
+# ten odpoví „už existuje", a žák se z té smyčky nedostane.
 if [ -d "$ARCH" ]; then
   echo
-  echo "  Prostředí už existuje v $ARCH — pokračujte, kde jste skončili."
-  echo "  Chcete začít znovu?  ./reset.sh"
+  if [ -f "$FORMULAR" ]; then
+    echo "  Prostředí už existuje v $ARCH — pokračujte, kde jste skončili."
+  else
+    vyrob_formular
+    echo "  Prostředí už existuje v $ARCH. Chyběl formulář, doplnila jsem ho."
+  fi
+  echo "  Chcete začít úplně znovu?  ./reset.sh"
   echo
   exit 0
 fi
@@ -36,17 +58,7 @@ for i in $(seq 1 "$POCET_LOG"); do
     done; } > "$DATA/logy/sluzba-$i.log"
 done
 
-cat > "$FORMULAR" <<'FORMULAR_KONEC'
-# Přehled archivace — vyplňte hodnoty za dvojtečku.
-# souboru      = kolik souborů je uvnitř archivu zaloha.tar
-# velikost-tar = velikost zaloha.tar v bajtech
-# velikost-tgz = velikost zaloha.tar.gz v bajtech
-# mensi        = který archiv je menší (tar nebo tgz)
-souboru:
-velikost-tar:
-velikost-tgz:
-mensi:
-FORMULAR_KONEC
+vyrob_formular
 
 cat <<EOF
 

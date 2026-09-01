@@ -112,7 +112,12 @@ export ZAK2 ZAK_UZIVATEL ZAK_IP ZAK_PORT
 lab_kod() {  # lab_kod PREFIX [sůl]
   # Sůl odlišuje kódy různých cvičení. Bez ní by měl žák ve všech cvičeních
   # tytéž čtyři číslice a druhý kód by uhodl, aniž by ho hledal.
-  printf '%s-%d' "${1:-NET}" $(( (ZAK * 7919 + ${2:-0} * 104729) % 9000 + 1000 ))
+  #
+  # Číslo se počítá z otisku, ne lineárním vzorcem. První verze byla afinní
+  # v ZAK, takže sousední čísla ve výkazu dělil pevný rozdíl — kdo znal dva
+  # kódy, dopočítal celou třídu. Stejný důvod jako u lab_vyber.
+  printf '%s-%d' "${1:-NET}" \
+    $(( 0x$(printf 'kod-%s-%s' "$ZAK" "${2:-0}" | _hash | cut -c1-7) % 9000 + 1000 ))
 }
 
 # Deterministický výběr K položek z N podle čísla žáka. Používá ho start.sh
@@ -270,8 +275,12 @@ require_soubor_obsahuje() {  # cesta vzor [popis_pass] [popis_fail]
 # stanice), nebo jen tvar odpovědi. Nikdy pouhý výskyt znaku — na ten
 # by náhodou trefil kdokoli.
 _zaznam() {  # _zaznam soubor klic  → vypíše hodnotu bez okolních mezer
-  v_cili "grep -im1 -E '^[[:space:]]*$2[[:space:]]*:' '$1'" \
-    | sed -E 's/^[[:space:]]*[^:]*:[[:space:]]*//; s/[[:space:]]+$//'
+  # Bere poslední NEPRÁZDNOU hodnotu, ne první výskyt klíče. Žák, který
+  # odpověď dopíše na nový řádek pod formulář místo doplnění za dvojtečku,
+  # by jinak dostal „(máte 'nic')" u odpovědi, kterou v souboru má.
+  v_cili "grep -i -E '^[[:space:]]*$2[[:space:]]*:' '$1'" \
+    | sed -E 's/^[[:space:]]*[^:]*:[[:space:]]*//; s/[[:space:]]+$//' \
+    | grep -v '^$' | tail -n 1
 }
 
 require_zaznam() {  # require_zaznam soubor klic hodnota [popis] [popis_fail]
@@ -319,16 +328,18 @@ require_soubor_neprazdny() {  # cesta [popis_pass] [popis_fail]
   else _zapis FAIL "${3:-chybí nebo je prázdný: $1}"; fi
 }
 
-require_min_radku() {  # soubor N [popis]
+require_min_radku() {  # soubor N [popis_pass] [popis_fail]
+  # Popis pro FAIL je zvlášť. Se sdíleným by hláška zněla „[FAIL] hlídač
+  # běžel dost dlouho", což je oznamovací věta, a navíc lež.
   local n; n="$(v_cili "grep -c '' '$1'")"; n="${n:-0}"
   if [ "$n" -ge "$2" ]; then _zapis PASS "${3:-$1 má aspoň $2 řádků}"
-  else _zapis FAIL "${3:-$1 má mít aspoň $2 řádků} (má $n)"; fi
+  else _zapis FAIL "${4:-${3:-$1 má mít aspoň $2 řádků}} (řádků: $n)"; fi
 }
 
-require_pocet_souboru() {  # adresar vzor N [popis]
+require_pocet_souboru() {  # adresar vzor N [popis_pass] [popis_fail]
   local n; n="$(v_cili "ls -1d '$1'/$2 | grep -c ''")"; n="${n:-0}"
   if [ "$n" -eq "$3" ]; then _zapis PASS "${4:-v $1 je $3 položek typu $2}"
-  else _zapis FAIL "${4:-v $1 má být $3 položek typu $2} (je jich $n)"; fi
+  else _zapis FAIL "${5:-${4:-v $1 má být $3 položek typu $2}} (napočítáno: $n)"; fi
 }
 
 require_prikaz() {  # jmeno [popis_pass] [popis_fail]

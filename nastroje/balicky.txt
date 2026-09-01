@@ -16,7 +16,10 @@ git                 # 3/06 — verzování; a žáci ho používají každou hod
 curl                # obecně
 wget                # obecně
 tree                # orientace v adresářích (2/05, 2/06)
-htop                # 2/21 — procesy
+htop                # 2/21 — procesy (Rozšíření)
+psmisc              # 2/21 — pstree
+zip                 # 2/19 — Rozšíření
+unzip               # 2/19 — Rozšíření
 vim                 # 2/07 — editory
 nano                # 2/07 — editory (v Ubuntu bývá, jistota)
 chrony              # čas — bez něj se rozejdou logy i ověřování
