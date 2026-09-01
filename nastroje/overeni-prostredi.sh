@@ -151,14 +151,6 @@ else
 fi
 info "Plný test uděláš jen ručně: rozbij /etc/fstab (neexistující UUID) a restartuj."
 
-# --------------------------------------------------------------- 7. PHP/GLPI
-hlavicka "7. PHP pro GLPI (lab 2/14)"
-PHPV=$(apt-cache policy php 2>/dev/null | awk '/Candidate/{print $2}')
-info "Kandidát balíčku php: ${PHPV:-nezjištěn}"
-info "Plán doporučuje GLPI jako HOTOVÝ kontejner, ne stavět zásobník v hodině —"
-info "pak je verze PHP starost image, ne tvoje."
-zapis "INFO" "GLPI/PHP" "${PHPV:-nezjištěn} — doporučen hotový kontejner"
-
 # ------------------------------------------------------------------ Úklid
 hlavicka "Úklid"
 if [ "$LXD" = "1" ]; then

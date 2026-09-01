@@ -88,11 +88,11 @@ else
   if [[ ! "$ODP" =~ ^[nN]$ ]]; then
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ubuntu-mate-core \
       && ok "MATE nainstalováno" || chyba "Instalace MATE selhala"
-    # prohlížeč potřebují laby s certifikátem, GLPI a Grafanou
+    # prohlížeč potřebují laby s certifikátem a Grafanou
     sudo snap install firefox >/dev/null 2>&1 && ok "Firefox nainstalován"
     info "Po restartu se přihlásíš do grafického prostředí."
   else
-    varuj "Přeskočeno — laby s prohlížečem (certifikát, GLPI) pak nepůjdou"
+    varuj "Přeskočeno — laby s prohlížečem (certifikát, Grafana) pak nepůjdou"
   fi
 fi
 
