@@ -104,7 +104,8 @@ fi
 
 # Postup je podklad pro obhajobu — vyučující si z něj vybere příkazy.
 require_min_radku "$VYSLEDEK/postup.txt" 15 \
-  "postup.txt zachycuje aspoň patnáct příkazů z vaší práce"
+  "postup.txt zachycuje aspoň patnáct příkazů z vaší práce" \
+  "ve vysledek/postup.txt zatím není patnáct příkazů z vaší práce"
 
 # Negativní kontrola: doklady se nesmí ztratit ani přibýt.
 # Hlídá se jen ztráta. Rovnost by potrestala i žáka, který si udělal kopii

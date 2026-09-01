@@ -62,7 +62,8 @@ require_path "$TRIDENI/ostatni" \
 # Počet štítků je číslo žáka. Sousedovo řešení tedy neprojde, i kdyby
 # se zkopírovalo celé.
 require_pocet_souboru "$TRIDENI" 'stitek-*.txt' "$ZAK" \
-  "štítků je přesně $ZAK, tedy vaše číslo z výkazu"
+  "štítků je přesně $ZAK, tedy vaše číslo z výkazu" \
+  "štítků má být $ZAK, tedy vaše číslo z výkazu"
 require_path "$TRIDENI/stitek-$ZAK.txt" \
   "poslední štítek se jmenuje stitek-$ZAK.txt" \
   "chybí stitek-$ZAK.txt — poslední štítek má nést vaše číslo"
@@ -71,7 +72,8 @@ require_path "$TRIDENI/stitek-$ZAK.txt" \
 # který terminál během cvičení zavřel, může mít v souboru jen dnešek.
 krok 4 "Historie"
 require_min_radku "$PRIJEM/historie.txt" 20 \
-  "historie.txt zachycuje aspoň 20 příkazů z vaší práce"
+  "historie.txt zachycuje aspoň 20 příkazů z vaší práce" \
+  "v historie.txt zatím není 20 příkazů z vaší práce"
 require_soubor_obsahuje "$PRIJEM/historie.txt" 'ls.*\*' \
   "v historii je vidět práce s globem" \
   "v historii není žádné ls s hvězdičkou — soubory jste vypisovali jinak"

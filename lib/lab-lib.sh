@@ -203,10 +203,13 @@ require_path() {  # require_path cesta [popis_pass] [popis_fail]
   else _zapis FAIL "${3:-${2:+chybí: }${2:-chybí $1}}"; fi
 }
 
-require_mode() {  # require_mode cesta prava   (např. 2770)
+require_mode() {  # require_mode cesta prava [popis_fail]
+  # Výchozí hláška očekávaná práva vypisuje — u vedených cvičení je zadání
+  # stejně uvádí. U ověřovacích, kde si je má žák odvodit sám, se předá
+  # vlastní popis_fail, který je neprozradí.
   local m; m="$(v_cili "stat -c %a '$1'")"
   if [ "$m" = "$2" ]; then _zapis PASS "$1 má práva $2"
-  else _zapis FAIL "$1 má práva ${m:-?}, očekáváno $2"; fi
+  else _zapis FAIL "${3:-$1 má práva ${m:-?}, očekáváno $2}${3:+ (máte ${m:-?})}"; fi
 }
 
 require_owner() {  # require_owner cesta vlastnik:skupina
@@ -215,13 +218,13 @@ require_owner() {  # require_owner cesta vlastnik:skupina
   else _zapis FAIL "$1 patří ${o:-?}, očekáváno $2"; fi
 }
 
-require_setgid() {
+require_setgid() {  # require_setgid cesta [popis_fail]
   # setgid = bit 2 v prvním oktalu (2,3,6,7). Pozor na prioritu && a || —
   # bez složených závorek by prázdný výstup prošel jako úspěch.
   local m; m="$(v_cili "stat -c %a '$1'")"
   if [ "${#m}" -eq 4 ] && (( (${m:0:1} & 2) != 0 )); then
     _zapis PASS "$1 má nastavený setgid bit"
-  else _zapis FAIL "$1 nemá setgid bit (práva ${m:-?})"; fi
+  else _zapis FAIL "${2:-$1 nemá setgid bit} (práva ${m:-?})"; fi
 }
 
 require_service_active() {
@@ -290,6 +293,15 @@ require_zaznam() {  # require_zaznam soubor klic hodnota [popis] [popis_fail]
   local h; h="$(_zaznam "$1" "$2")"
   # Nevyplněný řádek nesmí projít ani tehdy, když je prázdná i očekávaná
   # hodnota (třeba když se ji nepodařilo přečíst ze stanice).
+  if [ -n "$h" ] && [ "$h" = "$3" ]; then _zapis PASS "${4:-$2: $3}"
+  else _zapis FAIL "${5:-zatím nesedí — ${4:-řádek '$2:'}} (máte '${h:-nic}')"; fi
+}
+
+require_zaznam_jmeno() {  # soubor klic jmeno [popis] [popis_fail]
+  # Jméno souboru žák často opíše i s cestou nebo s „./" z výpisu ps.
+  # Smysl úkolu je soubor najít, ne trefit zápis — porovnává se poslední
+  # složka cesty.
+  local h; h="$(_zaznam "$1" "$2")"; h="${h##*/}"
   if [ -n "$h" ] && [ "$h" = "$3" ]; then _zapis PASS "${4:-$2: $3}"
   else _zapis FAIL "${5:-zatím nesedí — ${4:-řádek '$2:'}} (máte '${h:-nic}')"; fi
 }

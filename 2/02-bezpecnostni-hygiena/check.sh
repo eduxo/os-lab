@@ -51,7 +51,8 @@ for Z in 1 2 3; do
     "zpráva $Z má zapsaný verdikt v dohodnutém tvaru"
 done
 require_min_radku "$HYG/rozbor.txt" 6 \
-  "v rozbor.txt máte aspoň šest řádků odůvodnění"
+  "v rozbor.txt máte aspoň šest řádků odůvodnění" \
+  "v rozbor.txt zatím není šest řádků odůvodnění"
 poznamka "verdikty si projde vyučující — samotný tvar odpovědi nic neříká o tom,"
 poznamka "jestli je posouzení správné"
 

@@ -19,7 +19,8 @@ require_soubor_neprazdny "$LOG" \
 # by stačilo log zkrátit na dva řádky a všechno by „souhlasilo".
 # Nejmenší možný log má 62 řádků (nejnižší kombinace přirážek).
 require_min_radku "$LOG" 62 \
-  "log je celý — nic se z něj neztratilo"
+  "log je celý — nic se z něj neztratilo" \
+  "z logu se něco ztratilo — obnovíte ho přes ./reset.sh"
 
 # Správné hodnoty se počítají z logu, který má žák u sebe.
 # `|| echo 0` by u souboru bez shody přidalo druhou nulu a hodnota by měla
