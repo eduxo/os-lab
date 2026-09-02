@@ -38,13 +38,27 @@ cd ~/os-lab && git pull
 Zvykněte si na to. Je to přesně to, co dělá správce, který přebírá konfigurace
 ze společného repozitáře.
 
+## Jak je to rozdělené
+
+Cvičení jsou v každém ročníku rozdělená na dvě části podle pololetí:
+
+| Složka | Co v ní je |
+|---|---|
+| `2-lin`, `3-lin`, `4-lin` | **Linux** — první pololetí |
+| `2-win`, `3-win`, `4-win` | **Windows** — druhé pololetí |
+
+Linuxová cvičení mají skripty `.sh` a spouštějí se v terminálu vaší stanice.
+Windowsová mají `.ps1` a běží ve windowsové virtuální stanici — postup je
+popsaný níže.
+
 ## Práce s cvičením
 
-Každé cvičení má čtyři skripty. Číslo cvičení najdete v jeho zadání —
-například `3/12` je dvanácté cvičení třetího ročníku.
+Každé cvičení má čtyři skripty a leží ve složce pojmenované podle **ročníku
+a platformy**: `2-lin` je druhý ročník, linuxová část. Přesnou cestu najdete
+v zadání cvičení.
 
 ```bash
-cd ~/os-lab/3/12-sluzba-nenabehla
+cd ~/os-lab/2-lin/03-prikazovy-radek
 
 ./start.sh      # postaví prostředí — kontejnery, disky, účty
 ./check.sh      # ověří, co už máte hotové
@@ -86,7 +100,7 @@ U diagnostických cvičení tím dostanete **tutéž sadu závad znovu**, ne hot
 
 Některá cvičení běží ve **windowsové virtuální stanici**, kde není bash ani
 tenhle repozitář naklonovaný. Skripty se tam proto stahují jednotlivě.
-Poznáte je podle písmene v čísle — `2/14a`, `2/18a`.
+Najdete je ve složkách `2-win`, `3-win` a `4-win`; v číslech mají písmeno — `14a`, `18a`.
 
 V PowerShellu **spuštěném jako správce**:
 
@@ -103,7 +117,7 @@ z internetu a chystáte se ho pustit s právy správce. Pak:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\stahni.ps1 -Cvic W1
-cd C:\os-lab\2\14a-windows-start
+cd C:\os-lab\2-win\14a-windows-start
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
@@ -117,17 +131,18 @@ powershell -ExecutionPolicy Bypass -File .\check.ps1 -Krok 2
 
 ```
 os-lab/
-  2/              cvičení 2. ročníku — základy operačního systému
-  3/              cvičení 3. ročníku — servery a síťové služby
-  4/              cvičení 4. ročníku — správa dat a identit
-  lib/            sdílené funkce pro ověřovací skripty
-                  lab-lib.sh   pro linuxová cvičení
-                  lab-lib.ps1  pro windowsová cvičení
-  stahni.ps1      stahovač skriptů do windowsové stanice
+  2-lin/  2-win/     cvičení 2. ročníku — základy operačního systému
+  3-lin/  3-win/     cvičení 3. ročníku — servery a síťové služby
+  4-lin/  4-win/     cvičení 4. ročníku — správa dat a identit
+  lib/               sdílené funkce pro ověřovací skripty
+                     lab-lib.sh   pro linuxová cvičení
+                     lab-lib.ps1  pro windowsová cvičení
+  nastroje/          stavba a ověření stanice (pro vyučující)
+  stahni.ps1         stahovač skriptů do windowsové stanice
 ```
 
-Do složky `lib/` chodit nemusíte — obsahuje jen společné funkce, které
-skripty používají uvnitř.
+Do složek `lib/` a `nastroje/` chodit nemusíte — první obsahuje společné
+funkce, které skripty používají uvnitř, druhá nástroje pro vyučujícího.
 
 ---
 
@@ -135,8 +150,9 @@ skripty používají uvnitř.
 
 ### Přidání nového cvičení
 
-Každé cvičení je samostatná složka `<ročník>/<číslo>-<název>/` se skripty
-`start.sh`, `check.sh`, `stop.sh` a `reset.sh`.
+Každé cvičení je samostatná složka `<ročník>-<platforma>/<číslo>-<název>/`
+(například `3-lin/07-systemd-sluzby`) se skripty `start.sh`, `check.sh`,
+`stop.sh` a `reset.sh`. Windowsová cvičení mají tytéž skripty s příponou `.ps1`.
 
 Ověřovací skripty stojí na sdílené knihovně `lib/lab-lib.sh`, takže `check.sh`
 jednoho cvičení je jen seznam požadavků:
@@ -144,8 +160,8 @@ jednoho cvičení je jen seznam požadavků:
 ```bash
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
-require_user      "novak$ZAK"
-require_member    "novak$ZAK" ucetni
+require_user      "$ZAK_UZIVATEL"
+require_member    "$ZAK_UZIVATEL" ucetni
 require_setgid    /srv/data
 negative_no_777   /srv/data
 
@@ -170,6 +186,19 @@ místě, ne v šedesáti skriptech.
 - **Windowsová cvičení mají vlastní knihovnu** `lib/lab-lib.ps1` se stejným
   chováním i výstupem. Cílem je **Windows PowerShell 5.1**, ne PowerShell 7 —
   na Windows 11 je ve výchozím stavu jen ta první.
+
+### Stavba stanice
+
+Nástroje pro přípravu a ověření šablony jsou v `nastroje/` — mají vlastní
+[README](nastroje/README.md). Stručně:
+
+```bash
+bash ~/os-lab/nastroje/priprava-stanice.sh    # čistý Ubuntu Server → laboratoř
+bash ~/os-lab/nastroje/overeni-prostredi.sh   # ověří předpoklady
+```
+
+Balíčky, které mají být v šabloně, se zapisují do `nastroje/balicky.txt` —
+ne natvrdo do skriptu.
 
 ## Licence
 

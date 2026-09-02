@@ -14,10 +14,10 @@ $Kam    = 'C:\os-lab'
 
 $Soubory = @('lib/lab-lib.ps1')
 switch ($Cvic) {
-    'W1' { $Soubory += @('2/14a-windows-start/start.ps1','2/14a-windows-start/check.ps1',
-                         '2/14a-windows-start/reset.ps1','2/14a-windows-start/stop.ps1') }
-    'W2' { $Soubory += @('2/18a-windows-ntfs/start.ps1','2/18a-windows-ntfs/check.ps1',
-                         '2/18a-windows-ntfs/reset.ps1','2/18a-windows-ntfs/stop.ps1') }
+    'W1' { $Soubory += @('2-win/14a-windows-start/start.ps1','2-win/14a-windows-start/check.ps1',
+                         '2-win/14a-windows-start/reset.ps1','2-win/14a-windows-start/stop.ps1') }
+    'W2' { $Soubory += @('2-win/18a-windows-ntfs/start.ps1','2-win/18a-windows-ntfs/check.ps1',
+                         '2-win/18a-windows-ntfs/reset.ps1','2-win/18a-windows-ntfs/stop.ps1') }
     default {
         Write-Host ''
         Write-Host '  Použití:  powershell -ExecutionPolicy Bypass -File .\stahni.ps1 -Cvic W1'
@@ -45,7 +45,7 @@ foreach ($s in $Soubory) {
 }
 Write-Host ''
 Write-Host "  Hotovo. Přepněte se do adresáře cvičení a spusťte start.ps1:"
-if ($Cvic -eq 'W1') { Write-Host '    cd C:\os-lab\2\14a-windows-start' }
-else                { Write-Host '    cd C:\os-lab\2\18a-windows-ntfs' }
+if ($Cvic -eq 'W1') { Write-Host '    cd C:\os-lab\2-win\14a-windows-start' }
+else                { Write-Host '    cd C:\os-lab\2-win\18a-windows-ntfs' }
 Write-Host '    powershell -ExecutionPolicy Bypass -File .\start.ps1'
 Write-Host ''
