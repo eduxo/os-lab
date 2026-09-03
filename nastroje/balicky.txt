@@ -16,6 +16,10 @@ git                 # 3/06 — verzování; a žáci ho používají každou hod
 curl                # obecně
 wget                # obecně
 tree                # orientace v adresářích (2/05, 2/06)
+bind9-dnsutils      # 3/02 — dig; na Ubuntu Serveru není ve výchozím stavu
+netcat-openbsd      # 3/02 — nc -zv, zkouška portu
+iputils-tracepath   # 3/02 — Rozšíření
+python3             # 3/02 — naslouchač, který má žák najít
 htop                # 2/21 — procesy (Rozšíření)
 psmisc              # 2/21 — pstree
 zip                 # 2/19 — Rozšíření

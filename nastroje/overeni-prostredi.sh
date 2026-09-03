@@ -55,6 +55,18 @@ else
 fi
 
 # ------------------------------------------------------------------ 2. LXD
+# --------------------------------------------------------------- 1b. NIC
+hlavicka "1b. Síťové karty (lab 3/01)"
+POCET_NIC=0
+for dev in /sys/class/net/*/device; do [ -e "$dev" ] && POCET_NIC=$((POCET_NIC+1)); done
+info "Fyzických síťových karet: $POCET_NIC"
+if [ "$POCET_NIC" -ge 2 ]; then
+  zapis "OK" "NIC" "$POCET_NIC — lab 3/01 má kam dát statickou adresu"
+else
+  varuj "Lab 3/01 potřebuje DRUHOU, nepoužívanou kartu. Přidejte ji ve VirtualBoxu."
+  zapis "VAROVÁNÍ" "NIC" "$POCET_NIC — lab 3/01 nepůjde udělat"
+fi
+
 hlavicka "2. LXD"
 if ! command -v lxc >/dev/null; then
   chyba "LXD není nainstalován — testy 3-5 přeskočeny"
