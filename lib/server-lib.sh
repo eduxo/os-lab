@@ -47,6 +47,38 @@ _server_heslo() {
   cat "$soubor"
 }
 
+# Doinstalace balíčku DO KONTEJNERU. Obraz `ubuntu-26.04` je čistá kopie
+# `ubuntu:26.04` — nemá zaručeně naplněné /var/lib/apt/lists, takže samotné
+# `apt-get install` skončí na „Unable to locate package". A protože se výstup
+# zahazuje, prošlo by to tiše a lab by se rozbil až u žáka.
+#
+# Argument je `balíček:program`, protože se ty dva často nejmenují stejně —
+# binárku `nft` přináší balíček `nftables`. Ověřuje se PROGRAM, ne to, co
+# vrátil apt: instalace může skončit nulou a program tam stejně není.
+#
+# Vrací nenulový kód, když program po instalaci pořád chybí.
+doinstaluj() {  # doinstaluj balíček:program [další…]
+  local chybi=0 dvojice balicky=""
+  for dvojice in "$@"; do
+    lxc exec "$SERVER_KONT" -- bash -c "command -v ${dvojice#*:} >/dev/null" 2>/dev/null \
+      || { chybi=1; balicky="$balicky ${dvojice%%:*}"; }
+  done
+  [ "$chybi" -eq 0 ] && return 0
+
+  lxc exec "$SERVER_KONT" -- bash -c \
+    "DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+     && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq$balicky" >/dev/null 2>&1
+
+  for dvojice in "$@"; do
+    if ! lxc exec "$SERVER_KONT" -- bash -c "command -v ${dvojice#*:} >/dev/null" 2>/dev/null; then
+      echo "  Do serveru se nepodařilo doinstalovat '${dvojice%%:*}'." >&2
+      echo "  Zkuste ./start.sh znovu; když to nepomůže, řekněte o tom vyučujícímu." >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
 server_bezi() { [ "$(lxc list "^${SERVER_KONT}$" -c s --format csv 2>/dev/null)" = "RUNNING" ]; }
 
 postav_server() {
