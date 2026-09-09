@@ -177,6 +177,15 @@ krok() {  # krok N "Název části"
   printf "\n${_B}── Část %s — %s${_0}\n" "$_aktualni_krok" "$*"
 }
 
+# Filtr `--krok N` potlačuje VÝPIS, ne provádění — těla ostatních částí se
+# provedou tak jako tak. U čtení to nevadí, u zásahů do prostředí ano:
+# `--krok 1` by jinak sáhl na stav, který ověřuje až část 2, a žák by čekal
+# na něco, co se ho vůbec netýká. Kdo v kontrole mění stav nebo dlouho čeká,
+# obalí to touhle podmínkou.
+krok_aktivni() {  # krok_aktivni N → 0, když se část N opravdu vypisuje
+  [ -z "$_krok_filtr" ] || [ "$1" = "$_krok_filtr" ]
+}
+
 # ═══════════════════════════════════════════════ kontrolní funkce
 # Každá: když sedí → PASS, jinak FAIL s vysvětlením, co chybí.
 

@@ -33,12 +33,27 @@ acl                 # 2/17 — rozšířená oprávnění (getfacl, setfacl)
 gnupg               # 2/12 — podpisy a klíče
 
 # ── 3. ročník ─────────────────────────────────────────────────────────
-ufw                 # 3/13 — firewall
-# bind9             # 3/14 — DNS server        (doplnit při psaní labu)
-# kea-dhcp4-server  # 3/15 — DHCP server       (rozhodnout: kea vs isc-dhcp)
-# apache2           # 3/16, 3/17 — web server
-# samba             # 3/19 — file server
-# docker.io         # 3/21 — kontejnery jako učivo
+# (zatím nic navíc — služby 3. ročníku běží v kontejnerech, viz níže)
+
+# ══ BALÍČKY DO KONTEJNERU ═════════════════════════════════════════════
+#
+# Tenhle seznam se NEINSTALUJE na stanici — doinstalovávají si ho jednotlivé
+# `start.sh` do svých kontejnerů funkcí `doinstaluj` z lib/server-lib.sh.
+# Je tu proto, aby se za rok poznalo, co která služba potřebuje, a aby šlo
+# rozhodnout, jestli je předinstalovat do šablony obrazu (30 žáků naráz
+# instaluje přes síťový disk — viz „Nutno ověřit" v kartách bloku D).
+#
+# Formát: balíček:program — ověřuje se PROGRAM, protože se jména často liší.
+#
+# lsof:lsof                 # 3/12 — smazaný, ale otevřený soubor
+# ufw:ufw                   # 3/13 — firewall
+# nftables:nft              # 3/13 — pohled na skutečná pravidla (Krok 4)
+# bind9:named               # 3/14 — DNS server
+# bind9-utils:named-checkzone  # 3/14 — kontrola zóny před nasazením
+# dnsmasq:dnsmasq           # 3/15 — DHCP server
+# apache2:apache2           # 3/16, 3/17 — web server   (při psaní labu)
+# samba:smbd                # 3/19 — file server         (při psaní labu)
+# docker.io:docker          # 3/21 — kontejnery jako učivo (poběží ve VM, ne v kontejneru)
 
 # ── 4. ročník ─────────────────────────────────────────────────────────
 mdadm               # 4/02 — RAID

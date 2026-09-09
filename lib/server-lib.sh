@@ -18,6 +18,11 @@
 # `server-XX`, rodina systemd (cvičení 7–10) `sluzby-XX`.
 SERVER_KONT="${SERVER_KONT:-server-$ZAK2}"
 SERVER_OBRAZ="${SERVER_OBRAZ:-ubuntu-26.04}"   # lokální alias ze šablony VM
+# Volitelná DRUHÁ síťová karta. Prázdné = server má jen eth0 na lxdbr0.
+# Bloky A–D tohle nepoužívají; blok E ano — server tam má správu na lxdbr0
+# (SSH, apt) a službu na izolované síti, kde se LXD neplete do DNS a DHCP.
+SERVER_SIT2="${SERVER_SIT2:-}"                 # jméno LXD sítě pro eth1
+SERVER_IP2="${SERVER_IP2:-}"                   # statická adresa na eth1 (s /24)
 SERVER_UCET="sysadmin"
 SERVER_IP=""
 SERVER_HESLO=""
@@ -102,15 +107,49 @@ postav_server() {
 
   # Čekáme na adresu, ne na `systemctl is-system-running` — ten v kontejneru
   # obvykle skončí na „degraded" a smyčka by vždy vyčerpala celý timeout.
+  # POZOR: adresa se čte Z KONTEJNERU, ne ze sloupce `lxc list -c4`.
+  # Kontejner s druhou kartou má ve sloupci OBĚ adresy spojené odřádkováním,
+  # a CSV je proto uzavře do uvozovek — `cut` by vrátil `"10.20.7.10` i s tou
+  # uvozovkou a na dvou řádcích. Navíc se řadí sestupně, takže první není
+  # ta správní. Ptáme se rovnou na eth0, což je jednoznačné.
   local i
   for i in $(seq 1 60); do
-    SERVER_IP="$(lxc list "^${SERVER_KONT}$" -c4 --format csv 2>/dev/null | cut -d' ' -f1)"
+    SERVER_IP="$(lxc exec "$SERVER_KONT" -- bash -c \
+      "ip -4 -o addr show dev eth0 2>/dev/null | awk '{print \$4}' | cut -d/ -f1" \
+      2>/dev/null | tr -d '\r' | head -1)"
     [ -n "$SERVER_IP" ] && break
     sleep 1
   done
   if [ -z "$SERVER_IP" ]; then
     echo "  Server nedostal IP adresu — zavolejte vyučujícího."
     return 1
+  fi
+
+  # ── druhá karta, když si o ni lab řekl ──────────────────────────
+  # Přidává se AŽ PO startu: kontejner z obrazu má v netplanu jen eth0
+  # a druhou kartu je potřeba nakonfigurovat ručně. `lxc exec` funguje
+  # i na kontejneru bez adresy — nejde přes síť, ale přes socket LXD.
+  if [ -n "$SERVER_SIT2" ]; then
+    if ! lxc config device get "$SERVER_KONT" eth1 nictype >/dev/null 2>&1; then
+      lxc config device add "$SERVER_KONT" eth1 nic \
+        network="$SERVER_SIT2" name=eth1 >/dev/null 2>&1 || {
+          echo "  Druhou síťovou kartu se nepodařilo přidat — zavolejte vyučujícího."
+          return 1; }
+    fi
+    if [ -n "$SERVER_IP2" ]; then
+      # Zapisuje a aplikuje se JEN PŘI ZMĚNĚ. `netplan apply` restartuje
+      # systemd-networkd, a to pod otevřenou SSH relací žáka — dělat to
+      # při každém `start.sh` je zbytečné škubnutí sítí.
+      local novy stary
+      novy="$(printf 'network:\n  version: 2\n  ethernets:\n    eth1:\n      dhcp4: false\n      addresses: [%s]\n' "$SERVER_IP2")"
+      stary="$(lxc exec "$SERVER_KONT" -- cat /etc/netplan/60-netlab.yaml 2>/dev/null | tr -d '\r')"
+      if [ "$novy" != "$stary" ]; then
+        printf '%s' "$novy" | lxc exec "$SERVER_KONT" -- tee /etc/netplan/60-netlab.yaml >/dev/null
+        # netplan si stěžuje na práva, když je soubor čitelný pro všechny
+        lxc exec "$SERVER_KONT" -- chmod 600 /etc/netplan/60-netlab.yaml >/dev/null 2>&1
+        lxc exec "$SERVER_KONT" -- netplan apply >/dev/null 2>&1
+      fi
+    fi
   fi
 
   SERVER_HESLO="$(_server_heslo)"
