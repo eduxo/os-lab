@@ -18,6 +18,7 @@ wget                # obecně
 tree                # orientace v adresářích (2/05, 2/06)
 bind9-dnsutils      # 3/02 — dig; na Ubuntu Serveru není ve výchozím stavu
 netcat-openbsd      # 3/02 — nc -zv, zkouška portu
+smbclient           # 3/19 — připojení ke sdílení ze stanice
 iputils-tracepath   # 3/02 — Rozšíření
 python3             # 3/02 — naslouchač, který má žák najít
 htop                # 2/21 — procesy (Rozšíření)
@@ -51,8 +52,9 @@ gnupg               # 2/12 — podpisy a klíče
 # bind9:named               # 3/14 — DNS server
 # bind9-utils:named-checkzone  # 3/14 — kontrola zóny před nasazením
 # dnsmasq:dnsmasq           # 3/15 — DHCP server
+# shellcheck:shellcheck     # 3/20 — statická analýza skriptu
 # apache2:apache2           # 3/16, 3/17 — web server   (při psaní labu)
-# samba:smbd                # 3/19 — file server         (při psaní labu)
+# samba:smbd                # 3/19 — file server
 # docker.io:docker          # 3/21 — kontejnery jako učivo (poběží ve VM, ne v kontejneru)
 
 # ── 4. ročník ─────────────────────────────────────────────────────────
@@ -61,7 +63,6 @@ lvm2                # 4/05 — LVM
 cryptsetup          # 4/04 — LUKS
 restic              # 4/08 — zálohování
 wireguard-tools     # 4/12 — VPN
-shellcheck          # 3/20 — kontrola skriptů
 # ansible           # 4/17 — automatizace
 # slapd, ldap-utils, sssd   # 4/10 — centrální autentizace
 # prometheus, grafana       # 4/16 — monitoring (grafana není v repozitářích Ubuntu)
