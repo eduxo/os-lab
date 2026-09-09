@@ -1,10 +1,15 @@
 #!/bin/bash
-# 3/07 — ověření (běží na stanici, kontroluje kontejner)
+# 3/07 — ověření (běží na stanici, kontroluje kontejner).
+# Čísla částí odpovídají krokům zadání 1:1 — proto se začíná dvojkou:
+# Krok 1 zadání je jen prohlídka, není u něj co ověřovat.
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 
 LAB_KONTEJNER="sluzby-$ZAK2"
 
+if ! command -v lxc >/dev/null 2>&1; then
+  echo; echo "  Na stanici není LXD. Řekněte o tom vyučujícímu."; echo; exit 1
+fi
 # `lxc info` uspěje i u zastaveného serveru — bez tohohle rozlišení by žák
 # po ./stop.sh dostal sedm FAILů a myslel si, že o práci přišel.
 STAV="$(lxc list "^${LAB_KONTEJNER}$" -c s --format csv 2>/dev/null)"
@@ -15,15 +20,15 @@ elif [ "$STAV" != "RUNNING" ]; then
   echo "  Nastartujte ho a připojte se znovu:  ./start.sh"; echo; exit 1
 fi
 
-krok 1 "Unit soubor"
+krok 2 "Unit soubor"
 require_path "/etc/systemd/system/hlidac.service" "unit hlidac.service existuje" "chybí /etc/systemd/system/hlidac.service"
 require_unit_valid "hlidac.service"
 
-krok 2 "Služba běží a nastartuje po restartu"
+krok 3 "Služba běží a nastartuje po restartu"
 require_service_active  "hlidac"
 require_service_enabled "hlidac"
 
-krok 3 "Běží správně"
+krok 4 "Běží správně"
 require_service_user "hlidac" "hlidac$ZAK2"
 require_port_listening "$ZAK_PORT"
 require_soubor_obsahuje "/var/log/hlidac/hlidac.log" "hlidac bezi" "služba zapisuje do logu"

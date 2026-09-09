@@ -1,84 +1,25 @@
 #!/bin/bash
 # 3/07 — systemd: služby. Prostředí: LXD kontejner, přístup přes SSH.
+#
+# Server `sluzby-XX` sdílí celá rodina systemd (cvičení 7 až 10) a každé z nich
+# ho umí postavit samo — pravidlo o nezávislosti na předchozím stavu.
+# Stavbu drží lib/server-lib.sh; dřív tu byla vlastní kopie, ve které mimo jiné
+# uvízla vada s pořadím drop-inů sshd (99-lab.conf se nikdy neuplatnil).
 set -uo pipefail
+# Pořadí je podstatné: lab-lib.sh dá $ZAK2, teprve pak se dá pojmenovat
+# kontejner, a až potom se načte server-lib.sh, která to jméno použije.
 source "$(dirname "$0")/../../lib/lab-lib.sh"
+SERVER_KONT="sluzby-$ZAK2"
+source "$(dirname "$0")/../../lib/server-lib.sh"
 
-KONT="sluzby-$ZAK2"
-OBRAZ="ubuntu-26.04"          # lokální alias z šablony VM (bez stahování)
-
-if lxc info "$KONT" >/dev/null 2>&1; then
-  STAV="$(lxc info "$KONT" | awk '/^Status/{print tolower($2)}')"
-  [ "$STAV" != "running" ] && lxc start "$KONT" >/dev/null 2>&1
-  echo
-  echo "  Server $KONT už existuje — pokračujete tam, kde jste skončili."
-  echo "  Chcete začít znovu?  ./reset.sh"
-  echo
-  echo "    ssh sysadmin@$(lxc list "^${KONT}$" -c4 --format csv | cut -d' ' -f1)"
-  echo
-  exit 0
-fi
-
-echo "  Stavím server $KONT…"
-lxc launch "$OBRAZ" "$KONT" >/dev/null 2>&1 || {
-  echo "  Server se nepodařilo spustit. Zkontrolujte, že LXD běží: lxc list"; exit 1; }
-
-# Čekáme na adresu, ne na `systemctl is-system-running` — ten v kontejneru
-# obvykle skončí na "degraded" a smyčka by vždy vyčerpala celý timeout.
-IP=""
-for _ in $(seq 1 60); do
-  IP="$(lxc list "^${KONT}$" -c4 --format csv | cut -d' ' -f1)"
-  [ -n "$IP" ] && break
-  sleep 1
-done
-[ -z "$IP" ] && { echo "  Server nedostal IP adresu — zavolejte vyučujícího."; exit 1; }
-
-# ── přístup přes SSH (žák lxc nepoužívá) ────────────────────────────
-lxc exec "$KONT" -- bash -c "
-  useradd -m -s /bin/bash sysadmin 2>/dev/null
-  usermod -aG sudo sysadmin
-  # historie se zapisuje průběžně, ne až při odhlášení
-  grep -q 'history -a' /home/sysadmin/.bashrc || \
-    echo \"PROMPT_COMMAND='history -a'\" >> /home/sysadmin/.bashrc
-  mkdir -p /home/sysadmin/.ssh && chmod 700 /home/sysadmin/.ssh
-  # sudo bez hesla: účet z useradd žádné heslo nemá, takže by se k rootu
-  # nedostal žák s klíčem — a na zápisu do /etc/systemd/system stojí celý lab
-  echo 'sysadmin ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-sysadmin
-  chmod 440 /etc/sudoers.d/90-sysadmin
-" >/dev/null 2>&1
-
-# ── B4: SSH je jediná cesta dovnitř — když chybí, musí to skript říct
-lxc exec "$KONT" -- bash -c \
-  "command -v sshd >/dev/null || { apt-get update -qq && apt-get install -y -qq openssh-server; }" \
-  || { echo "  SSH server se nepodařilo nainstalovat — zavolejte vyučujícího."; exit 1; }
-lxc exec "$KONT" -- systemctl enable --now ssh >/dev/null 2>&1
-# Novější Ubuntu může mít SSH socket-aktivované (ssh.socket místo ssh.service)
-lxc exec "$KONT" -- bash -c "systemctl is-active --quiet ssh || systemctl is-active --quiet ssh.socket" \
-  || { echo "  SSH na serveru neběží — zavolejte vyučujícího."; exit 1; }
-
-# Přihlášení klíčem (žák si ho vyrobil v cvičení 3/04). Když klíč nemá,
-# nastavíme jednorázové heslo a vypíšeme ho — do repozitáře žádné nepatří.
-KLIC="$(ls "$HOME"/.ssh/id_*.pub 2>/dev/null | head -1)"
-if [ -n "$KLIC" ]; then
-  lxc file push "$KLIC" "$KONT/home/sysadmin/.ssh/authorized_keys" >/dev/null 2>&1
-  lxc exec "$KONT" -- chown -R sysadmin:sysadmin /home/sysadmin/.ssh
+postav_server || exit 1
+if nasad_klic_ze_stanice; then
   PRIHLASENI="klíčem (bez hesla)"
 else
-  # Heslo se losuje na stanici a zůstává na ní. Dřív se počítalo z čísla
-  # žáka — jenže vzorec byl ve veřejném repozitáři, takže si heslo k účtu
-  # kteréhokoli spolužáka spočítal kdokoli. Uložené je proto, aby druhé
-  # spuštění start.sh ukázalo totéž heslo, ne nové.
-  SOUBOR_HESLA="$HOME/.os-lab-3-07-heslo"
-  if [ ! -s "$SOUBOR_HESLA" ]; then
-    head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' | cut -c1-12 > "$SOUBOR_HESLA"
-    chmod 600 "$SOUBOR_HESLA"
-  fi
-  HESLO="$(cat "$SOUBOR_HESLA")"
-  lxc exec "$KONT" -- bash -c "echo 'sysadmin:$HESLO' | chpasswd"
-  # cloud image Ubuntu má PasswordAuthentication no — bez tohohle by heslo nefungovalo
-  lxc exec "$KONT" -- bash -c \
-    "printf 'PasswordAuthentication yes\n' > /etc/ssh/sshd_config.d/99-lab.conf; systemctl restart ssh" >/dev/null 2>&1
-  PRIHLASENI="heslem: $HESLO"
+  PRIHLASENI="heslem: $SERVER_HESLO"
 fi
+KONT="$SERVER_KONT"
+IP="$SERVER_IP"
 
 # ── program, který má žák rozběhnout jako službu ────────────────────
 # Poslouchá na portu a zároveň píše do logu — obojí pak jde ověřit.
@@ -102,6 +43,12 @@ exec python3 -m http.server "$PORT" --bind 0.0.0.0 --directory /srv/stav
 HLIDAC
 lxc exec "$KONT" -- chmod +x /opt/hlidac/hlidac.sh
 
+if [ "$SERVER_NOVY" -eq 0 ]; then
+  echo
+  echo "  Server $SERVER_KONT už existuje — pokračujete tam, kde jste skončili."
+  echo "  Chcete začít znovu?  ./reset.sh"
+fi
+
 cat <<EOF
 
   Server je připravený.
@@ -120,6 +67,6 @@ cat <<EOF
 
   Průběžná kontrola — ve druhém okně, na této stanici (ne na serveru):
 
-    cd ~/os-lab/3/07-systemd-sluzby && ./check.sh --krok 1
+    cd ~/os-lab/3-lin/07-systemd-sluzby && ./check.sh --krok 2
 
 EOF

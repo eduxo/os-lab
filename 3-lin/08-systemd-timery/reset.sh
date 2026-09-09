@@ -1,5 +1,5 @@
 #!/bin/bash
-# 3/07 — návrat do výchozího stavu (smaže server i vaši práci na něm)
+# 3/08 — návrat do výchozího stavu (smaže server i vaši práci na něm)
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 KONT="sluzby-$ZAK2"

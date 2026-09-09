@@ -14,7 +14,9 @@
 # Vše je idempotentní — funkce se pouští i na server, který už stojí, a doplní
 # jen to, co chybí. Nikdy nespoléhá na to, že proběhlo předchozí cvičení.
 
-SERVER_KONT="server-$ZAK2"
+# Jméno kontejneru se dá přepsat PŘED sourcováním — blok B používá
+# `server-XX`, rodina systemd (cvičení 7–10) `sluzby-XX`.
+SERVER_KONT="${SERVER_KONT:-server-$ZAK2}"
 SERVER_OBRAZ="${SERVER_OBRAZ:-ubuntu-26.04}"   # lokální alias ze šablony VM
 SERVER_UCET="sysadmin"
 SERVER_IP=""
@@ -25,7 +27,17 @@ SERVER_NOVY=0
 # vzorec, ze kterého by se dalo spočítat — jinak si heslo k účtu kteréhokoli
 # spolužáka odvodí kdokoli. Uložené je proto, aby druhé spuštění ukázalo totéž.
 _server_heslo() {
-  local soubor="$HOME/.os-lab-server-heslo"
+  # Soubor je per kontejner — dva různé servery mají různá hesla a druhé
+  # spuštění start.sh musí ukázat totéž heslo, ne nové.
+  local soubor="$HOME/.os-lab-heslo-$SERVER_KONT"
+  # Přechod ze staršího jména: kdo dělal blok B před přejmenováním, má heslo
+  # v ~/.os-lab-server-heslo. Převezme se, aby mu start.sh neukázal nové.
+  local stary="$HOME/.os-lab-server-heslo"
+  if [ ! -s "$soubor" ] && [ -s "$stary" ]; then
+    install -m 600 /dev/null "$soubor"
+    cat "$stary" > "$soubor"
+    rm -f "$stary"
+  fi
   if [ ! -s "$soubor" ]; then
     # Práva se nastavují PŘED zápisem — jinak je mezi vytvořením a chmod
     # krátké okno, kdy soubor s heslem má práva podle umask.
@@ -75,6 +87,18 @@ postav_server() {
   lxc exec "$SERVER_KONT" -- bash -c "
     id $SERVER_UCET >/dev/null 2>&1 || useradd -m -s /bin/bash $SERVER_UCET
     usermod -aG sudo $SERVER_UCET
+    # `adm` a `systemd-journal` kvůli journalu: systémový log smí bez sudo číst
+    # jen root a členové těchto skupin (viz journalctl(1)). Bez nich by
+    # `journalctl -u <sluzba>` mlčel a cvičení 3/09 by nemělo co ukázat.
+    # Správce serveru do `adm` patří i v reálném provozu.
+    usermod -aG adm,systemd-journal $SERVER_UCET
+    # Časové pásmo serveru = pásmo učebny. Bez toho běží kontejner v UTC
+    # a žák ve cvičení o logech porovnává čas v journalu s hodinami na zdi,
+    # které se liší o dvě hodiny. Locale se nechává anglické — generovat
+    # cs_CZ.UTF-8 by znamenalo instalaci navíc a výpisy v zadání se drží
+    # toho, co server opravdu vypíše.
+    timedatectl set-timezone Europe/Prague 2>/dev/null || \
+      ln -sf /usr/share/zoneinfo/Europe/Prague /etc/localtime
     # historie se zapisuje průběžně, ne až při odhlášení — kontrola i vyučující
     # se na ni dívají dřív, než se žák odhlásí
     grep -q 'history -a' /home/$SERVER_UCET/.bashrc 2>/dev/null || \

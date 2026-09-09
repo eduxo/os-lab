@@ -233,7 +233,14 @@ require_service_active() {
 }
 
 require_service_enabled() {
-  if v_cili "systemctl is-enabled --quiet '$1'"; then _zapis PASS "služba $1 se spustí po startu (enabled)"
+  # POZOR: `is-enabled --quiet` vrací 0 nejen pro `enabled`, ale i pro `static`,
+  # `indirect`, `generated` a `transient`. Unit BEZ sekce [Install] je `static`,
+  # takže by --quiet dalo PASS i tomu, kdo službu jen nastartoval a enable
+  # vynechal. Proto se porovnává řetězec, ne návratový kód.
+  local stav
+  stav="$(v_cili "systemctl is-enabled '$1' 2>/dev/null" | tr -d '\r' | tail -n1)"
+  if [ "$stav" = "enabled" ]; then _zapis PASS "služba $1 se spustí po startu (enabled)"
+  elif [ "$stav" = "static" ]; then _zapis FAIL "služba $1 nemá sekci [Install] — nejde zapnout (enable) a po restartu nenaběhne"
   else _zapis FAIL "služba $1 není enabled — po restartu nenaběhne"; fi
 }
 
