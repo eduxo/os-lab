@@ -88,7 +88,9 @@ krok 3 "Nic se neobešlo"
 # Opravit web tím, že se zruší firewall nebo že se z něj udělá výchozí
 # stránka, není oprava — je to výměna jedné poruchy za jinou.
 case "$(na_serveru "LC_ALL=C ufw status 2>/dev/null | head -1" | tr -d '\r')" in
-  *active*)
+  # Pozor: `*active*` by sedlo i na `Status: inactive`, tedy právě na to,
+  # co má tahle část odhalit. Porovnává se proto celý řetězec.
+  *"Status: active"*)
     uspech "firewall zůstal zapnutý" ;;
   *)
     chyba "firewall je vypnutý — to není oprava, to je díra"

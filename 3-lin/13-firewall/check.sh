@@ -68,9 +68,11 @@ krok 3 "Firewall běží a filtruje"
 # musí vynutit. Bez toho by kontrola závisela na jazyku serveru.
 UFW_STAV="$(na_serveru "LC_ALL=C ufw status 2>/dev/null | head -1" | tr -d '\r')"
 case "$UFW_STAV" in
-  *active*) uspech "ufw je aktivní" ;;
-  *)        chyba "ufw není aktivní"
-            poznamka "nejdřív povolte port 22, teprve potom sudo ufw enable" ;;
+  # Pozor: `*active*` by sedlo i na `Status: inactive` — vypnutý firewall
+  # by prošel jako zapnutý. Porovnává se proto celý řetězec.
+  *"Status: active"*) uspech "ufw je aktivní" ;;
+  *)                  chyba "ufw není aktivní"
+                      poznamka "nejdřív povolte port 22, teprve potom sudo ufw enable" ;;
 esac
 POLITIKA="$(na_serveru "LC_ALL=C ufw status verbose 2>/dev/null | grep -i '^Default:'" | tr -d '\r')"
 case "$POLITIKA" in
