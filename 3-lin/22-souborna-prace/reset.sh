@@ -3,6 +3,8 @@
 set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 KONT="intraweb-$ZAK2"
+PRACE="$HOME/netlab/intraweb"
+PROTOKOL="$PRACE/protokol.txt"
 echo
 if ! command -v lxc >/dev/null 2>&1; then
   echo "  Na stanici není LXD. Řekněte o tom vyučujícímu."; echo; exit 1
@@ -16,7 +18,7 @@ case "$o" in
     if lxc delete -f "$KONT" >/dev/null 2>&1; then
       # Kód zakázky i otisk certifikátu vzniknou nové, takže vyplněný
       # protokol by přestal platit.
-      rm -f "$HOME/netlab/intraweb/protokol.txt"
+      rm -f "$PROTOKOL"
       echo "  Smazáno — i protokol na stanici, protože hodnoty v něm už neplatí."
       exec "$(dirname "$0")/start.sh"
     else
