@@ -34,7 +34,11 @@ acl                 # 2/17 — rozšířená oprávnění (getfacl, setfacl)
 gnupg               # 2/12 — podpisy a klíče
 
 # ── 3. ročník ─────────────────────────────────────────────────────────
-# (zatím nic navíc — služby 3. ročníku běží v kontejnerech, viz níže)
+docker.io           # 3/21, 3/21b — kontejnery jako učivo; běží PŘÍMO VE VM,
+                    # ne v LXD kontejneru (rozhodnutí z plánu). Instalace není
+                    # učivo labu, tak se předinstaluje jako všechno ostatní.
+docker-compose-v2   # 3/21b — `docker compose`. POZOR: balíček docker.io ho
+                    # NEOBSAHUJE, plugin je zvlášť. Bez něj lab nepojede.
 
 # ══ BALÍČKY DO KONTEJNERU ═════════════════════════════════════════════
 #
@@ -55,7 +59,6 @@ gnupg               # 2/12 — podpisy a klíče
 # shellcheck:shellcheck     # 3/20 — statická analýza skriptu
 # apache2:apache2           # 3/16, 3/17 — web server   (při psaní labu)
 # samba:smbd                # 3/19 — file server
-# docker.io:docker          # 3/21 — kontejnery jako učivo (poběží ve VM, ne v kontejneru)
 
 # ── 4. ročník ─────────────────────────────────────────────────────────
 mdadm               # 4/02 — RAID

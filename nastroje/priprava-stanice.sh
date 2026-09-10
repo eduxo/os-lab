@@ -107,7 +107,18 @@ info "Ze seznamu: ${#BALICKY[@]} balíčků"
 
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${BALICKY[@]}" \
   && ok "Nainstalováno ${#BALICKY[@]} balíčků" || chyba "Instalace balíčků selhala"
-info "Pozn.: Docker se instaluje až v labu 3/21 — je to učivo, ne infrastruktura."
+# Docker je v balicky.txt jako všechno ostatní: instalace není učivo labu
+# 3/21 (ten je o obrazech, portech a svazcích) a 30 žáků instalujících
+# naráz přes síťový disk je týž problém jako stahování obrazů.
+if command -v docker >/dev/null 2>&1; then
+  if id -nG "$USER" | tr ' ' '\n' | grep -qx docker; then
+    ok "Docker je nainstalovaný a $USER je ve skupině docker"
+  else
+    sudo usermod -aG docker "$USER" \
+      && ok "Uživatel $USER přidán do skupiny docker" \
+      && varuj "Projeví se to až po novém přihlášení — odhlaste se a přihlaste."
+  fi
+fi
 info "Nové balíčky se přidávají do nastroje/balicky.txt, ne sem."
 
 # ------------------------------------------------------------ 3. LXD
@@ -181,6 +192,51 @@ else
   sudo lxc image copy ubuntu:26.04 local: --alias ubuntu-26.04 --auto-update \
     && ok "Obraz uložen jako lokální alias 'ubuntu-26.04'"
   info "V labech pak: lxc launch ubuntu-26.04 <jmeno>   (bez dvojtečky = lokální)"
+fi
+
+# ------------------------------------------------------------ 6b. obrazy Dockeru
+krok "8b/9 Obrazy Dockeru do lokální cache"
+# Docker Hub má limity pro anonymní stahování z jedné adresy a 30 žáků
+# za jedním NATem je spolehlivě trefí. Obrazy se proto stáhnou jednou při
+# stavbě šablony a uloží i jako .tar — kdyby se na rozdané VM ztratily
+# z úložiště Dockeru, laby si je načtou odtamtud a nesahají na síť.
+OBRAZY_DIR=/opt/os-lab/obrazy
+if ! command -v docker >/dev/null 2>&1; then
+  varuj "Docker není nainstalovaný — obrazy pro 3/21 se nepřipraví"
+elif ! sudo docker info >/dev/null 2>&1; then
+  varuj "Docker je nainstalovaný, ale démon neběží — obrazy se nepřipraví"
+  info "Zkuste: sudo systemctl start docker"
+else
+  sudo mkdir -p "$OBRAZY_DIR"
+  for OBRAZ in nginx:alpine alpine:latest; do
+    SOUBOR="$OBRAZY_DIR/$(printf '%s' "$OBRAZ" | tr ':/' '--').tar"
+    if sudo docker image inspect "$OBRAZ" >/dev/null 2>&1; then
+      ok "Obraz $OBRAZ je v lokální cache"
+    elif [ -f "$SOUBOR" ]; then
+      sudo docker load -i "$SOUBOR" >/dev/null 2>&1 \
+        && ok "Obraz $OBRAZ načten ze zálohy" \
+        || varuj "Obraz $OBRAZ se nepodařilo načíst ze zálohy"
+    else
+      info "Stahuji $OBRAZ (jednorázově, při stavbě šablony)..."
+      sudo docker pull "$OBRAZ" >/dev/null 2>&1 \
+        && ok "Obraz $OBRAZ stažen" \
+        || varuj "Obraz $OBRAZ se nepodařilo stáhnout — laby 3/21 a 3/21b bez něj nepojedou"
+    fi
+    if [ ! -f "$SOUBOR" ]; then
+      sudo docker save -o "$SOUBOR" "$OBRAZ" >/dev/null 2>&1 \
+        || varuj "Zálohu obrazu $OBRAZ se nepodařilo uložit do $SOUBOR"
+    fi
+  done
+  sudo chmod -R a+rX "$OBRAZY_DIR" 2>/dev/null
+  # Plugin Compose je SAMOSTATNÝ balíček (docker-compose-v2) a je jediné
+  # místo, kde se dá zjistit, jestli doskočil. Instalace balíčků je jedno
+  # volání apt, takže při jednom nedostupném balíčku padne celé pole.
+  if docker compose version >/dev/null 2>&1; then
+    ok "Plugin docker compose je k dispozici"
+  else
+    varuj "Plugin 'docker compose' chybí — lab 3/21b bez něj nepojede"
+    info "Balíček se jmenuje docker-compose-v2 a je v nastroje/balicky.txt"
+  fi
 fi
 
 # ------------------------------------------------------------ 7. heslo roota
