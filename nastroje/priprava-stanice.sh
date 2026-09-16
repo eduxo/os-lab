@@ -240,6 +240,29 @@ if [ "$RIDI_NETWORKD" != "1" ]; then
   info  "Stanice neodpovídá tomu, s čím počítá cvičení 3/01. Ověř: networkctl"
 else
   ok "Síť řídí systemd-networkd (rozhraní $IF_VEN)"
+  # 3) dracut (vyrábí zaváděcí obraz Ubuntu 26.04) nechává při startu v /run
+  #    záložní „DHCP na všechno" (zzzz-dracut-default.network). networkd pak
+  #    nastavuje i druhou síťovku, která má pro cvičení 3/01 zůstat volná,
+  #    čeká na DHCP, který na vnitřní síti nepřijde, a může zdržet start.
+  #    Soubor stejného jména v /etc odkazující na /dev/null ho vypne
+  #    (systemd.network: /etc má přednost před /run). Jen když rozhraní ven
+  #    nastavuje netplan — jinak by stanice po restartu zůstala bez sítě.
+  DRACUT_SIT=zzzz-dracut-default.network
+  if [ ! -e "/etc/systemd/network/$DRACUT_SIT" ]; then
+    NF="$(networkctl status "$IF_VEN" 2>/dev/null | awk -F': ' '/Network File:/{print $2; exit}')"
+    case "$NF" in
+      */10-netplan-*)
+        sudo mkdir -p /etc/systemd/network
+        sudo ln -s /dev/null "/etc/systemd/network/$DRACUT_SIT" \
+          && sudo networkctl reload >/dev/null 2>&1
+        [ -L "/etc/systemd/network/$DRACUT_SIT" ] \
+          && ok "Záložní DHCP od dracutu vypnuto — další síťovky zůstanou volné (po restartu)" \
+          || varuj "Záložní DHCP od dracutu se vypnout nepodařilo"
+        ;;
+      *)
+        varuj "Rozhraní $IF_VEN nenastavuje netplan (${NF:-?}) — záložní DHCP od dracutu nechávám" ;;
+    esac
+  fi
   if systemctl is-active --quiet NetworkManager || systemctl is-enabled --quiet NetworkManager 2>/dev/null; then
     sudo systemctl disable --now NetworkManager >/dev/null 2>&1
     sudo systemctl disable NetworkManager-wait-online >/dev/null 2>&1
