@@ -173,24 +173,6 @@ else
   fi
 fi
 
-# S MATE přibude NetworkManager a jeho ikona v panelu. Síť na Serveru ale
-# řídí netplan + systemd-networkd — a právě tak ji učí cvičení 3/01.
-# NetworkManager síťovku neřídí, takže ikona hlásí „nepřipojeno", i když síť
-# běží, a žák by viděl dvě různé odpovědi na tutéž otázku. Proto ho vypnout,
-# ale JEN když síť opravdu řídí networkd. Oba balíčky jsou pro ubuntu-mate-core
-# jen doporučené, MATE tím nijak nepřijde.
-RENDERER="$(sudo sh -c 'cat /etc/netplan/*.yaml' 2>/dev/null | awk '/^[[:space:]]*renderer:/{print $2; exit}')"
-if systemctl is-active --quiet systemd-networkd && [ "$RENDERER" != "NetworkManager" ]; then
-  if systemctl is-enabled --quiet NetworkManager 2>/dev/null || systemctl is-active --quiet NetworkManager; then
-    sudo systemctl disable --now NetworkManager >/dev/null 2>&1 \
-      && ok "NetworkManager vypnut — síť řídí systemd-networkd, jak ji učí cvičení 3/01"
-  fi
-  if dpkg -s network-manager-gnome >/dev/null 2>&1; then
-    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq network-manager-gnome >/dev/null 2>&1 \
-      && ok "Ikona NetworkManageru odebrána — hlásila „nepřipojeno\", i když síť běží"
-  fi
-fi
-
 # ------------------------------------------------------------ vzhled
 krok "Vzhled stanice eduxo"
 # Pozadí, motiv, domovská stránka Firefoxu a přihlašovací obrazovka.
