@@ -270,9 +270,9 @@ skript se zeptá znovu.
 Tenhle postup vznikl proti dokumentaci a proti skriptům, **ne na postavené VM**.
 Až ho projdeš, oprav tady, co nesedělo:
 
-1. **Jestli je v obrazu 26.04 multiverse zapnuté.** Bez něj krok 4b jen varuje
-   a schránka nefunguje. Ověřeno je, že `virtualbox-guest-utils` v 26.04
-   (resolute) existuje — že je repozitář po instalaci zapnutý, ne.
+1. ~~Jestli je v obrazu 26.04 multiverse zapnuté.~~ **Ověřeno 2026-09-16 na
+   školní šabloně: NENÍ.** Skript ho teď zapíná sám. Ve VirtualBoxu je navíc
+   potřeba ručně přepnout **Zařízení → Sdílená schránka → Obousměrná**.
 2. **Jestli je modul `vboxguest` v jádře** (`modinfo vboxguest`). Skript to
    kontroluje a poradí `linux-modules-extra`, ale nevyzkoušeno to je.
 3. **Kolik po stavbě zabírá soubor VDI** — a jestli se to vejde do žákovského

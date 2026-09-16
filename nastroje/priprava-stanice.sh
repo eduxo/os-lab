@@ -244,24 +244,44 @@ HV="$(systemd-detect-virt 2>/dev/null || echo none)"
 case "$HV" in
   oracle)
     info "Běžíme ve VirtualBoxu"
-    # virtualbox-guest-* je v multiverse — na Serveru bývá zapnuté, ale
-    # ověřit se to musí, jinak apt jen řekne „nemá kandidáta".
-    if ! apt-cache policy virtualbox-guest-utils 2>/dev/null | grep -q 'Candidate: [0-9]'; then
-      varuj "virtualbox-guest-utils není dostupný — chybí nejspíš multiverse"
-      info "Zapni ho:  sudo add-apt-repository multiverse && sudo apt-get update"
+    # virtualbox-guest-* je v multiverse. Skript ho zapne SÁM — dřív jen radil
+    # a pokračoval dál, takže po „připravené" stanici zbyl ruční krok, na který
+    # se přišlo až podle nefunkční schránky.
+    # Kandidát se čte do proměnné, ne rourou do `grep -q`: s pipefail by
+    # předčasně ukončený grep mohl apt-cache shodit SIGPIPE a podmínka by lhala.
+    kandidat() { LC_ALL=C apt-cache policy virtualbox-guest-utils 2>/dev/null; }
+    if [[ "$(kandidat)" != *"Candidate: "[0-9]* ]]; then
+      info "Balíček není k dispozici — zapínám repozitář multiverse."
+      command -v add-apt-repository >/dev/null 2>&1 \
+        || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq software-properties-common
+      sudo add-apt-repository -y multiverse >/dev/null 2>&1 \
+        && sudo apt-get update -qq \
+        && ok "Multiverse zapnuté" \
+        || chyba "Multiverse se zapnout nepodařilo"
+    fi
+    if [[ "$(kandidat)" != *"Candidate: "[0-9]* ]]; then
+      chyba "virtualbox-guest-utils ani po zapnutí multiverse není k dispozici"
+      info  "Ověř ručně:  apt-cache policy virtualbox-guest-utils"
     else
       sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         virtualbox-guest-utils virtualbox-guest-x11 \
-        && ok "Doplňky VirtualBoxu nainstalovány" \
+        && { ok "Doplňky VirtualBoxu nainstalovány"; RESTART=1; } \
         || chyba "Instalace doplňků VirtualBoxu selhala"
       # Ověřovací příkaz se musí ověřit taky: balíček se nainstaluje i tehdy,
       # když modul v jádře není, a schránka pak beze slova nefunguje.
+      if dpkg -s virtualbox-guest-utils >/dev/null 2>&1; then
+        ok "virtualbox-guest-utils je opravdu nainstalovaný"
+      else
+        chyba "virtualbox-guest-utils po instalaci v systému není"
+      fi
       if modinfo vboxguest >/dev/null 2>&1; then
         ok "Modul vboxguest je v jádře k dispozici"
       else
         varuj "Modul vboxguest v jádře není — schránka ani rozlišení fungovat nebudou"
         info "Doinstaluj:  sudo apt-get install linux-modules-extra-\$(uname -r)"
       fi
+      info "Schránku je potřeba zapnout i ve VirtualBoxu — ve výchozím stavu je vypnutá:"
+      info "Zařízení → Sdílená schránka → Obousměrná"
     fi ;;
   vmware)
     info "Běžíme ve VMware (cylab)"
@@ -411,13 +431,14 @@ fi
 # ------------------------------------------------------------ souhrn
 printf '\n\033[1;34m======== HOTOVO ========\033[0m\n'
 echo
-if [ "${ODHLASIT:-0}" = "1" ]; then
+if [ "${RESTART:-0}" = "1" ]; then
+  printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m restartuj VM  (sudo reboot)\n'
+  printf '  Doplňky hypervizoru se jinak nerozběhnou a nepůjde schránka ani\n'
+  printf '  rozlišení. Restart zároveň platí členství ve skupinách lxd a docker.\n\n'
+elif [ "${ODHLASIT:-0}" = "1" ]; then
   printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m odhlas se a znovu přihlas\n'
   printf '  (nebo restartuj VM) — jinak nebude fungovat lxc ani docker bez sudo.\n\n'
 fi
-echo "  Schránku a rozlišení řeší krok s doplňky hypervizoru sám."
-echo "  ISO s Guest Additions připojuj jen tehdy, když ohlásil potíž."
-echo
 echo "  Ověření předpokladů:"
 echo "     bash $REPO_DIR/nastroje/overeni-prostredi.sh"
 echo
