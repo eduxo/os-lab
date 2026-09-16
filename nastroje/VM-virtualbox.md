@@ -158,9 +158,8 @@ VirtualBox sám, zapne multiverse a vezme `virtualbox-guest-utils`), LXD
 s btrfs, síť `netlab`, obraz `ubuntu-26.04` do lokální cache a obrazy Dockeru.
 Stažená kopie skriptu se na konci sama smaže.
 
-Po doběhnutí **restartuj** a podívej se, že sedí vzhled, přihlašovací obrazovka
-a schránka. Pak stanici **vypni a exportuj** — nic dalšího v šabloně dělat
-nemusíš.
+Po doběhnutí stanici **vypni a exportuj** — nic dalšího v šabloně dělat
+nemusíš. Všechno, co skript nastavil, se projeví při prvním startu.
 
 > **Cvičení v šabloně nezkoušej.** První spuštění kteréhokoli cvičení uloží do
 > stanice tvoje číslo žáka (`~/.os-lab-zak`) a to by pak měla celá třída.

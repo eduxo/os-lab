@@ -82,8 +82,8 @@ bash ~/os-lab/nastroje/test-fstab.sh oprav     # vrátí zpátky
 
 ## Až je hotovo
 
-Po doběhnutí skriptu restartovat, zkontrolovat vzhled a schránku, VM vypnout
-a exportovat do OVA. Nic dalšího v šabloně dělat netřeba.
+Po doběhnutí skriptu VM vypnout a exportovat do OVA. Nic dalšího v šabloně
+dělat netřeba — co skript nastavil, se projeví při prvním startu.
 
 **Cvičení v šabloně nezkoušej** — první spuštění uloží do stanice číslo žáka
 a to by pak měla celá třída. Zkoušej na importované kopii.

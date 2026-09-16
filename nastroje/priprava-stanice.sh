@@ -555,12 +555,11 @@ fi
 printf '\n\033[1;34m======== HOTOVO ========\033[0m\n'
 echo
 if [ "${RESTART:-0}" = "1" ]; then
-  printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m restartuj VM  (sudo reboot)\n'
-  printf '  Doplňky hypervizoru se jinak nerozběhnou a nepůjde schránka ani\n'
-  printf '  rozlišení. Restart zároveň platí členství ve skupinách lxd a docker.\n\n'
+  printf '  \033[0;33mZměny se projeví po dalším startu.\033[0m Restartuj VM (sudo reboot),\n'
+  printf '  nebo ji rovnou vypni (sudo poweroff) a exportuj.\n\n'
 elif [ "${ODHLASIT:-0}" = "1" ]; then
-  printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m odhlas se a znovu přihlas\n'
-  printf '  (nebo restartuj VM) — jinak nebude fungovat lxc ani docker bez sudo.\n\n'
+  printf '  \033[0;33mZměny se projeví po dalším přihlášení.\033[0m Odhlas se, restartuj VM,\n'
+  printf '  nebo ji rovnou vypni (sudo poweroff) a exportuj.\n\n'
 fi
 echo "  Ověření předpokladů:"
 echo "     bash $REPO_DIR/nastroje/overeni-prostredi.sh"
