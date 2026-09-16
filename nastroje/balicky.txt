@@ -7,14 +7,25 @@
 # Formát: jeden balíček na řádek, komentáře za #.
 #
 # Po doplnění stačí ve VM:
-#     cd ~/os-lab && git pull && bash nastroje/priprava-stanice.sh
-# Skript doinstaluje jen to, co chybí — platí i pro už rozdané žákovské VM.
+#     bash ~/os-lab/nastroje/priprava-stanice.sh
+# Skript si repozitář stáhne sám a stanici podle tohohle seznamu SROVNÁ:
+# doinstaluje, co přibylo, a odinstaluje, co odsud vypadlo. Platí to i pro
+# už rozdané žákovské VM — proto se sem balíčky přidávají i odebírají.
+#
+# Co skript odinstaluje, si hlídá podle /var/lib/os-lab/balicky.stav — tedy
+# podle toho, co sám podle seznamu nainstaloval minule. Na nic, co si
+# nainstaloval někdo jiný, nesáhne. Chráněné (git, sudo, ca-certificates,
+# openssh-server) nezmizí, ani když je odsud smažeš — bez nich by se stanice
+# už nedala aktualizovat.
 
 # ── základ, potřebuje víc labů ────────────────────────────────────────
 openssh-server      # 3/03, 3/04 — vzdálená správa; taky cesta do kontejnerů
 git                 # 3/06 — verzování; a žáci ho používají každou hodinu
-curl                # obecně
+curl                # obecně; 3/17 a 3/22 ho na stanici vyžadují jmenovitě
 wget                # obecně
+openssl             # 3/17, 3/22 — otisk a rozbor certifikátu ZE STANICE
+rsync               # 3/04 — přenos souborů na server, pouští ho žák na stanici
+lsb-release         # používá ho sám priprava-stanice.sh ke kontrole verze
 tree                # orientace v adresářích (2/05, 2/06)
 bind9-dnsutils      # 3/02 — dig; na Ubuntu Serveru není ve výchozím stavu
 netcat-openbsd      # 3/02 — nc -zv, zkouška portu

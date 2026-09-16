@@ -1,54 +1,122 @@
 #!/bin/bash
-# Příprava šablony VM pro cvičení OS.
-# Cíl: čistý Ubuntu Server 26.04 LTS → připravená laboratoř s LXD a prostředím MATE.
+# Příprava stanice pro cvičení OS — JEDEN soubor, od gitu po hotovou laboratoř.
+# Cíl: čistý Ubuntu Server 26.04 LTS → laboratoř s LXD, Dockerem a prostředím MATE.
+#
+# Na čistou stanici se stáhne takhle:
+#     curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/priprava-stanice.sh -o priprava-stanice.sh
+#     bash priprava-stanice.sh
+#
+# Skript si sám doinstaluje git a stáhne repozitář — nic dalšího stahovat
+# nemusíš. Když už repozitář máš, pouštěj ho odtamtud:
+#     bash ~/os-lab/nastroje/priprava-stanice.sh
 #
 # Funguje na x86_64 (školní stanice) i arm64 (vývojová VM na Macu) — postup
 # je stejný, liší se jen architektura instalačního obrazu.
 #
-# Spusť jako běžný uživatel (sysadmin), NE jako root:
-#     bash ~/os-lab/nastroje/priprava-stanice.sh
-# sudo si o heslo řekne samo.
+# Spusť jako běžný uživatel (sysadmin), NE jako root. sudo si o heslo řekne samo.
 #
-# Skript je idempotentní — lze pustit opakovaně.
+# JE IDEMPOTENTNÍ a je určený k opakovanému spouštění: po změně balicky.txt
+# ho žáci pustí znovu a on stanici srovná — doinstaluje, co přibylo, a
+# odinstaluje, co ze seznamu vypadlo. Neinstaluje všechno znovu.
 
 set -uo pipefail
 
-krok()  { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
+# Kroky se číslují samy — jinak se při každém přidání kroku přečíslovává
+# zbytek souboru a čísla se rozejdou s tím, co skript opravdu dělá.
+_KROK=0
+krok()  { _KROK=$((_KROK+1)); printf '\n\033[1;34m== %d. %s ==\033[0m\n' "$_KROK" "$1"; }
 ok()    { printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 varuj() { printf '  \033[0;33m!\033[0m %s\n' "$1"; }
 chyba() { printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 info()  { printf '    %s\n' "$1"; }
 
+REPO="https://github.com/eduxo/os-lab.git"
+CIL="$HOME/os-lab"
+STAV_DIR=/var/lib/os-lab
+STAV="$STAV_DIR/balicky.stav"
+# Tyhle se neodinstalují, ani když ze seznamu vypadnou. Bez gitu by se stanice
+# už nedala aktualizovat, bez sudo a ssh by se nedalo nic.
+CHRANENE=" git sudo ca-certificates openssh-server "
+
 # ------------------------------------------------------------ kontroly
 if [ "$(id -u)" = "0" ]; then
-  chyba "Nespouštěj jako root. Spusť jako sysadmin, sudo se použije uvnitř."
+  chyba "Nespouštěj jako root — repozitář by skončil v /root a skupiny"
+  info  "lxd a docker by se přidaly rootovi místo tobě."
+  info  "Spusť jako sysadmin, sudo se použije uvnitř."
   exit 1
 fi
 
 VER=$(lsb_release -rs 2>/dev/null)
-if [ "$VER" != "26.04" ]; then
-  varuj "Očekáváno Ubuntu 26.04, nalezeno: ${VER:-neznámé}. Pokračuji, ale nemusí sedět."
+if [ -n "$VER" ] && [ "$VER" != "26.04" ]; then
+  varuj "Očekáváno Ubuntu 26.04, nalezeno: $VER. Pokračuji, ale nemusí sedět."
 fi
-info "Architektura: $(dpkg --print-architecture)"
 
-echo "Skript připraví tuto VM jako šablonu laboratoře. Bude potřeba heslo pro sudo."
+echo
+echo "  Skript připraví tuto stanici jako laboratoř OS."
+echo "  Bude potřeba heslo pro sudo."
 sudo -v || { chyba "sudo selhalo"; exit 1; }
 # udržet sudo naživu po celou dobu běhu
 while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done 2>/dev/null &
 SUDO_KEEPALIVE=$!
 trap 'kill "$SUDO_KEEPALIVE" 2>/dev/null' EXIT
 
-# ------------------------------------------------------------ 1. aktualizace
-krok "1/9 Aktualizace systému"
+info "Architektura: $(dpkg --print-architecture 2>/dev/null || echo neznámá)"
+
+# ------------------------------------------------------------ aktualizace
+krok "Aktualizace systému"
 info "(na pomalém síťovém disku to může trvat i 10 minut)"
 sudo apt-get update -qq && ok "Seznamy balíčků aktualizovány"
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade && ok "Systém aktualizován"
 
-# ------------------------------------------------------------ 2. balíčky
-krok "2/9 Kořenový svazek — využít celý disk"
-# Instalátor Ubuntu Serveru vytvoří LVM svazek jen na část disku (typicky
-# polovinu) a zbytek nechá ve skupině nevyužitý. Bez rozšíření dojde místo
-# někdy uprostřed roku — obrazy kontejnerů a snapshoty rostou.
+# ------------------------------------------------------------ git a repozitář
+krok "Repozitář os-lab"
+# Slepice a vejce: seznam balíčků i všechna cvičení žijí v repozitáři, ale
+# na čerstvém Serveru není git, kterým by se stáhl. Proto si ho skript
+# doinstaluje sám — a proto stačí stáhnout jenom tenhle jeden soubor.
+if [ -f "$(dirname "$0")/balicky.txt" ]; then
+  # Skript běží ze stromu repozitáře — použij ten, ve kterém leží.
+  REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+  ok "Běžím z repozitáře $REPO_DIR"
+  if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    git -C "$REPO_DIR" pull --ff-only >/dev/null 2>&1 \
+      && ok "Repozitář aktualizován" \
+      || varuj "git pull neprošel — stavím z toho, co je stažené"
+  fi
+else
+  if ! command -v git >/dev/null 2>&1; then
+    info "Instaluji git…"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git ca-certificates \
+      || { chyba "Instalace gitu selhala — má stanice přístup k internetu?"; exit 1; }
+    # Ověřovací příkaz se musí ověřit taky: apt skončí nulou i tehdy, když
+    # balíček nakonec chybí, a git clone by spadl až o krok dál.
+    command -v git >/dev/null 2>&1 || { chyba "git se nainstalovat nepodařilo"; exit 1; }
+  fi
+  ok "git je k dispozici ($(git --version | awk '{print $3}'))"
+
+  if [ -d "$CIL/.git" ]; then
+    git -C "$CIL" pull --ff-only >/dev/null 2>&1 \
+      && ok "Repozitář v $CIL aktualizován" \
+      || varuj "git pull neprošel — stavím z toho, co je stažené"
+  elif [ -e "$CIL" ]; then
+    chyba "$CIL existuje, ale není to repozitář. Přejmenuj ho nebo smaž."
+    exit 1
+  else
+    info "Stahuji $REPO…"
+    git clone "$REPO" "$CIL" >/dev/null 2>&1 \
+      && ok "Repozitář stažen do $CIL" \
+      || { chyba "Stažení selhalo — zkontroluj připojení k internetu"; exit 1; }
+  fi
+  REPO_DIR="$CIL"
+fi
+
+SEZNAM="$REPO_DIR/nastroje/balicky.txt"
+[ -f "$SEZNAM" ] || { chyba "V repozitáři chybí $SEZNAM"; exit 1; }
+
+# ------------------------------------------------------------ kořenový svazek
+krok "Kořenový svazek — využít celý disk"
+# Instalátor Ubuntu Serveru vytvoří LVM svazek jen na část disku (na 100GB
+# disku typicky 48 GB) a zbytek nechá ve skupině nevyužitý. Bez rozšíření
+# dojde místo někdy uprostřed roku — obrazy kontejnerů a snapshoty rostou.
 ROOT_SRC="$(findmnt -no SOURCE / 2>/dev/null)"
 ROOT_FS="$(findmnt -no FSTYPE / 2>/dev/null)"
 if ! command -v lvs >/dev/null 2>&1 || ! sudo lvs "$ROOT_SRC" >/dev/null 2>&1; then
@@ -78,7 +146,8 @@ else
   fi
 fi
 
-krok "3/9 Grafické prostředí MATE"
+# ------------------------------------------------------------ MATE
+krok "Grafické prostředí MATE"
 if dpkg -s ubuntu-mate-core >/dev/null 2>&1 || dpkg -s mate-desktop-environment >/dev/null 2>&1; then
   ok "Prostředí MATE už je nainstalované"
 else
@@ -96,33 +165,76 @@ else
   fi
 fi
 
-krok "4/9 Nástroje pro laby"
-# Seznam je v nastroje/balicky.txt — tam se doplňuje při psaní nových labů.
-SEZNAM="$(dirname "$0")/balicky.txt"
-if [ ! -f "$SEZNAM" ]; then
-  chyba "Chybí $SEZNAM — bez něj nevím, co instalovat."; exit 1
+# ------------------------------------------------------------ balíčky
+krok "Balíčky pro cvičení"
+# balicky.txt je ZDROJ PRAVDY. Skript stanici podle něj SROVNÁ: doinstaluje,
+# co přibylo, a odinstaluje, co ze seznamu vypadlo. Aby se dalo poznat, co
+# odinstalovat, pamatuje si v $STAV, co podle seznamu nainstaloval minule —
+# nikdy nesáhne na nic, co si nainstaloval někdo jiný.
+# Bez `mapfile`, aby se tahle úvaha dala vyzkoušet i mimo cílový systém.
+BALICKY=()
+while read -r B; do BALICKY+=("$B"); done \
+  < <(sed 's/#.*//' "$SEZNAM" | tr -s ' \t' '\n' | grep -v '^$' | sort -u)
+if [ "${#BALICKY[@]}" -eq 0 ]; then
+  chyba "V $SEZNAM nejsou žádné balíčky — to nevypadá správně."; exit 1
 fi
-mapfile -t BALICKY < <(sed 's/#.*//' "$SEZNAM" | tr -s ' ' '\n' | grep -v '^$')
-info "Ze seznamu: ${#BALICKY[@]} balíčků"
+info "Seznam říká: ${#BALICKY[@]} balíčků"
 
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${BALICKY[@]}" \
-  && ok "Nainstalováno ${#BALICKY[@]} balíčků" || chyba "Instalace balíčků selhala"
-# Docker je v balicky.txt jako všechno ostatní: instalace není učivo labu
-# 3/21 (ten je o obrazech, portech a svazcích) a 30 žáků instalujících
-# naráz přes síťový disk je týž problém jako stahování obrazů.
+# Co chybí
+CHYBI=()
+for B in "${BALICKY[@]}"; do
+  dpkg -s "$B" >/dev/null 2>&1 || CHYBI+=("$B")
+done
+
+if [ "${#CHYBI[@]}" -eq 0 ]; then
+  ok "Všechny balíčky ze seznamu už jsou nainstalované"
+else
+  info "Doinstaluji ${#CHYBI[@]}: ${CHYBI[*]}"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${CHYBI[@]}" \
+    && ok "Doinstalováno ${#CHYBI[@]} balíčků" \
+    || chyba "Instalace balíčků selhala — zkus ji ručně, ať vidíš proč"
+fi
+
+# Co přebývá — jen to, co skript sám podle seznamu kdysi nainstaloval
+PREBYVA=()
+if [ -f "$STAV" ]; then
+  while read -r B; do
+    [ -n "$B" ] || continue
+    printf '%s\n' "${BALICKY[@]}" | grep -qxF "$B" && continue
+    case "$CHRANENE" in *" $B "*) info "Vypadl ze seznamu, ale je chráněný: $B"; continue ;; esac
+    dpkg -s "$B" >/dev/null 2>&1 && PREBYVA+=("$B")
+  done < "$STAV"
+fi
+
+if [ "${#PREBYVA[@]}" -gt 0 ]; then
+  varuj "Ze seznamu vypadlo ${#PREBYVA[@]}: ${PREBYVA[*]}"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq "${PREBYVA[@]}" >/dev/null 2>&1 \
+    && ok "Odinstalováno ${#PREBYVA[@]} balíčků" \
+    || varuj "Odinstalace neprošla celá — zkontroluj ručně"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get autoremove -y -qq >/dev/null 2>&1
+fi
+
+# Stav se zapisuje AŽ TEĎ — kdyby instalace spadla, ať se nezapamatuje
+# seznam, který na stanici není.
+sudo mkdir -p "$STAV_DIR"
+printf '%s\n' "${BALICKY[@]}" | sudo tee "$STAV" >/dev/null
+info "Nové balíčky se přidávají do nastroje/balicky.txt, ne sem."
+
+# Docker: skupina. Instalace není učivo labu 3/21 (ten je o obrazech, portech
+# a svazcích) a 30 žáků instalujících naráz přes síťový disk je týž problém
+# jako stahování obrazů.
 if command -v docker >/dev/null 2>&1; then
   if id -nG "$USER" | tr ' ' '\n' | grep -qx docker; then
     ok "Docker je nainstalovaný a $USER je ve skupině docker"
   else
     sudo usermod -aG docker "$USER" \
       && ok "Uživatel $USER přidán do skupiny docker" \
-      && varuj "Projeví se to až po novém přihlášení — odhlaste se a přihlaste."
+      && ODHLASIT=1
   fi
 fi
-info "Nové balíčky se přidávají do nastroje/balicky.txt, ne sem."
 
-# --------------------------------------------- 4b. doplňky hypervizoru
-krok "4b/9 Doplňky hypervizoru (schránka, rozlišení)"
+# ------------------------------------------------------------ hypervizor
+krok "Doplňky hypervizoru (schránka, rozlišení)"
 # Bez nich se ve VM nedá kopírovat mezi hostitelem a hostem a okno nemění
 # rozlišení — na to žáci narazí hned první hodinu. Balíčky z Ubuntu jsou
 # lepší než ISO s Guest Additions: nic se nepřekládá (moduly vboxguest,
@@ -138,7 +250,10 @@ case "$HV" in
       varuj "virtualbox-guest-utils není dostupný — chybí nejspíš multiverse"
       info "Zapni ho:  sudo add-apt-repository multiverse && sudo apt-get update"
     else
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq         virtualbox-guest-utils virtualbox-guest-x11         && ok "Doplňky VirtualBoxu nainstalovány"         || chyba "Instalace doplňků VirtualBoxu selhala"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+        virtualbox-guest-utils virtualbox-guest-x11 \
+        && ok "Doplňky VirtualBoxu nainstalovány" \
+        || chyba "Instalace doplňků VirtualBoxu selhala"
       # Ověřovací příkaz se musí ověřit taky: balíček se nainstaluje i tehdy,
       # když modul v jádře není, a schránka pak beze slova nefunguje.
       if modinfo vboxguest >/dev/null 2>&1; then
@@ -150,17 +265,20 @@ case "$HV" in
     fi ;;
   vmware)
     info "Běžíme ve VMware (cylab)"
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq       open-vm-tools open-vm-tools-desktop       && ok "open-vm-tools nainstalovány"       || chyba "Instalace open-vm-tools selhala" ;;
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      open-vm-tools open-vm-tools-desktop \
+      && ok "open-vm-tools nainstalovány" \
+      || chyba "Instalace open-vm-tools selhala" ;;
   none)
     info "Neběžíme ve virtuálu — doplňky hypervizoru přeskakuji" ;;
   *)
     info "Hypervizor '$HV' neznám — doplňky nech na sobě" ;;
 esac
 
-# ------------------------------------------------------------ 3. LXD
-krok "5/9 LXD"
-if command -v lxc >/dev/null 2>&1; then
-  ok "LXD už je nainstalován ($(lxc version 2>/dev/null | head -1))"
+# ------------------------------------------------------------ LXD
+krok "LXD"
+if snap list lxd >/dev/null 2>&1; then
+  ok "LXD už je nainstalovaný"
 else
   sudo snap install lxd && ok "LXD nainstalován"
 fi
@@ -171,11 +289,11 @@ if ! id -nG "$USER" | grep -qw lxd; then
   sudo usermod -aG lxd "$USER" && ok "Uživatel $USER přidán do skupiny lxd"
   ODHLASIT=1
 else
-  ok "Uživatel $USER už je ve skupině lxd"; ODHLASIT=0
+  ok "Uživatel $USER už je ve skupině lxd"
 fi
 
-# ------------------------------------------------------------ 4. lxd init
-krok "6/9 Inicializace LXD"
+# ------------------------------------------------------------ lxd init
+krok "Inicializace LXD"
 if sudo lxc storage list -f csv 2>/dev/null | grep -q .; then
   ok "LXD je už inicializován — přeskakuji"
 else
@@ -208,8 +326,8 @@ PRESEED
   [ $? -eq 0 ] && ok "LXD inicializován (btrfs, lxdbr0)" || chyba "lxd init selhal"
 fi
 
-# ------------------------------------------------------------ 5. síť netlab
-krok "7/9 Izolovaná síť netlab (pro laby DNS a DHCP)"
+# ------------------------------------------------------------ síť netlab
+krok "Izolovaná síť netlab (pro laby DNS a DHCP)"
 if sudo lxc network list -f csv 2>/dev/null | grep -q '^netlab,'; then
   ok "Síť netlab už existuje"
 else
@@ -218,8 +336,8 @@ else
     && ok "Síť netlab vytvořena (bez vlastního DHCP — žákův DHCP server bude jediný)"
 fi
 
-# ------------------------------------------------------------ 6. obrazy
-krok "8/9 Předstažení obrazů do lokální cache"
+# ------------------------------------------------------------ obrazy LXD
+krok "Předstažení obrazů kontejnerů"
 info "Kvůli síťovému disku a 30 žákům naráz — v hodině se pak nestahuje nic."
 if sudo lxc image list local: -f csv 2>/dev/null | grep -q 'ubuntu-26.04'; then
   ok "Obraz ubuntu-26.04 je už v lokální cache"
@@ -230,8 +348,8 @@ else
   info "V labech pak: lxc launch ubuntu-26.04 <jmeno>   (bez dvojtečky = lokální)"
 fi
 
-# ------------------------------------------------------------ 6b. obrazy Dockeru
-krok "8b/9 Obrazy Dockeru do lokální cache"
+# ------------------------------------------------------------ obrazy Dockeru
+krok "Obrazy Dockeru do lokální cache"
 # Docker Hub má limity pro anonymní stahování z jedné adresy a 30 žáků
 # za jedním NATem je spolehlivě trefí. Obrazy se proto stáhnou jednou při
 # stavbě šablony a uloží i jako .tar — kdyby se na rozdané VM ztratily
@@ -265,8 +383,7 @@ else
   done
   sudo chmod -R a+rX "$OBRAZY_DIR" 2>/dev/null
   # Plugin Compose je SAMOSTATNÝ balíček (docker-compose-v2) a je jediné
-  # místo, kde se dá zjistit, jestli doskočil. Instalace balíčků je jedno
-  # volání apt, takže při jednom nedostupném balíčku padne celé pole.
+  # místo, kde se dá zjistit, jestli doskočil.
   if docker compose version >/dev/null 2>&1; then
     ok "Plugin docker compose je k dispozici"
   else
@@ -275,8 +392,8 @@ else
   fi
 fi
 
-# ------------------------------------------------------------ 7. heslo roota
-krok "9/9 Heslo uživatele root"
+# ------------------------------------------------------------ heslo roota
+krok "Heslo uživatele root"
 if sudo passwd -S root 2>/dev/null | grep -qE ' (L|NP) '; then
   varuj "Účet root je zamčený."
   info "Lab 4/7 (oprava fstab z emergency shellu) na tom může ztroskotat —"
@@ -296,14 +413,14 @@ printf '\n\033[1;34m======== HOTOVO ========\033[0m\n'
 echo
 if [ "${ODHLASIT:-0}" = "1" ]; then
   printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m odhlas se a znovu přihlas\n'
-  printf '  (nebo restartuj VM) — jinak nebude fungovat lxc bez sudo.\n\n'
+  printf '  (nebo restartuj VM) — jinak nebude fungovat lxc ani docker bez sudo.\n\n'
 fi
-echo "  Schránku a rozlišení řeší krok 4b sám (balíčky z Ubuntu)."
-echo "  ISO s Guest Additions připojuj jen tehdy, když 4b ohlásil potíž."
+echo "  Schránku a rozlišení řeší krok s doplňky hypervizoru sám."
+echo "  ISO s Guest Additions připojuj jen tehdy, když ohlásil potíž."
 echo
-echo "  Až se přihlásíš zpět, spusť ověření předpokladů plánu:"
-echo "     bash ~/os-lab/nastroje/overeni-prostredi.sh"
+echo "  Ověření předpokladů:"
+echo "     bash $REPO_DIR/nastroje/overeni-prostredi.sh"
 echo
-echo "  Potom VM vypni a udělej snapshot 'cista-sablona' — z něj budou"
-echo "  vycházet všechny žákovské kopie."
+echo "  Příště pouštěj skript rovnou z repozitáře — je tam vždy nejnovější:"
+echo "     bash ~/os-lab/nastroje/priprava-stanice.sh"
 echo

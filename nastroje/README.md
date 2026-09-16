@@ -13,17 +13,14 @@ arm64 na vývojové VM — postup je stejný).
 > exportem a rozdání na stanice — je ve **[VM-virtualbox.md](VM-virtualbox.md)**.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/bootstrap.sh -o bootstrap.sh
-bash bootstrap.sh                             # 1. git + repozitář + příprava
+curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/priprava-stanice.sh -o priprava-stanice.sh
+bash priprava-stanice.sh                      # 1. připraví celou stanici
 # odhlásit a znovu přihlásit (skupiny lxd a docker)
 bash ~/os-lab/nastroje/overeni-prostredi.sh   # 2. ověří předpoklady
 ```
 
-### `bootstrap.sh`
-Řeší slepici a vejce: příprava žije v tomhle repozitáři, ale na čerstvém
-Ubuntu Serveru není `git`, kterým by se stáhl. Doinstaluje git, naklonuje
-`os-lab` do `~/os-lab` a předá řízení `priprava-stanice.sh`. Na už postavené
-stanici jen aktualizuje repozitář. Idempotentní.
+Stahuje se **jeden soubor**. Git ani repozitář předem mít nemusíš — skript si
+je obstará sám a od té chvíle pracuje z `~/os-lab`.
 
 ### `priprava-stanice.sh`
 Kroky: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
@@ -32,7 +29,7 @@ laby · **doplňky hypervizoru** · **LXD** s úložištěm btrfs · inicializac
 izolovaná síť `netlab` pro cvičení s DNS a DHCP · předstažení obrazu kontejnerů
 a obrazů Dockeru do lokální cache · nastavení hesla roota.
 
-> **Doplňky hypervizoru (krok 4b)** se řídí tím, co vrátí `systemd-detect-virt`:
+> **Doplňky hypervizoru** se řídí tím, co vrátí `systemd-detect-virt`:
 > ve VirtualBoxu `virtualbox-guest-utils` + `-x11` (z **multiverse**), ve VMware
 > `open-vm-tools`. Balíčky z Ubuntu jsou lepší než ISO s Guest Additions —
 > nic se nepřekládá a přežijí aktualizaci jádra. Bez nich nefunguje schránka
@@ -43,16 +40,23 @@ a obrazů Dockeru do lokální cache · nastavení hesla roota.
 > ležet. Bez rozšíření dojde místo uprostřed roku, až porostou obrazy kontejnerů
 > a snapshoty. Skript to pozná a nabídne opravu; běží za provozu, bez restartu.
 
-Je idempotentní — opakované spuštění jen doplní, co chybí.
+**Je stavěný na opakované spouštění.** Po změně `balicky.txt` ho žáci pustí
+znovu a on stanici srovná — doinstaluje, co přibylo, odinstaluje, co ze seznamu
+vypadlo. Neinstaluje nic znovu. Co smí odinstalovat, si drží v
+`/var/lib/os-lab/balicky.stav`, takže na cizí balíčky nesáhne.
 
 ### `balicky.txt`
 Seznam balíčků, které musí být v šabloně. Čte ho `priprava-stanice.sh`.
 **Nové cvičení = nový řádek sem**, i s poznámkou, který lab balíček potřebuje.
 Zakomentované řádky jsou příprava na 3. a 4. ročník.
 
-Doplnění se do už rozdaných žákovských VM dostane přes:
+Odebrání balíčku ze seznamu ho ze stanic **taky odinstaluje** — seznam je
+zdroj pravdy v obou směrech. Chráněné (`git`, `sudo`, `ca-certificates`,
+`openssh-server`) zmizet nemůžou.
+
+Změna se do už rozdaných žákovských VM dostane přes:
 ```bash
-cd ~/os-lab && git pull && bash nastroje/priprava-stanice.sh
+bash ~/os-lab/nastroje/priprava-stanice.sh
 ```
 
 ### `overeni-prostredi.sh`

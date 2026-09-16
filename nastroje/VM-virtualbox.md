@@ -132,13 +132,13 @@ Odstranit disk z jednotky), jinak se VM bude pořád bootovat z instalátoru.
 
 ## 3. Stavba prostředí
 
-Na čerstvém Serveru **není `git`**, kterým by se repozitář stáhl. Řeší to
-`bootstrap.sh` — doinstaluje git, stáhne `os-lab` a předá řízení přípravě:
+Stáhne se **jediný soubor**. Git ani repozitář předem mít nemusíš — skript
+si je obstará sám:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/bootstrap.sh -o bootstrap.sh
-less bootstrap.sh      # podívej se, co pouštíš
-bash bootstrap.sh
+curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/priprava-stanice.sh -o priprava-stanice.sh
+less priprava-stanice.sh      # podívej se, co pouštíš
+bash priprava-stanice.sh
 ```
 
 Celé to trvá desítky minut a stahuje stovky MB.
@@ -146,8 +146,9 @@ Celé to trvá desítky minut a stahuje stovky MB.
 > Kdyby na stanici nebyl ani `curl`, jde totéž ručně:
 > `sudo apt update && sudo apt install -y git && git clone https://github.com/eduxo/os-lab.git ~/os-lab && bash ~/os-lab/nastroje/priprava-stanice.sh`
 
-Na už postavené stanici se `bootstrap.sh` pustit dá taky — jen aktualizuje
-repozitář a doplní, co chybí.
+Od druhého spuštění ho pouštěj rovnou z repozitáře
+(`bash ~/os-lab/nastroje/priprava-stanice.sh`) — je tam vždy nejnovější verze
+a skript si ho sám aktualizuje.
 
 Skript se ptá jen na dvě věci — jestli doinstalovat MATE a jaké má být heslo
 roota. Zbytek udělá sám: rozšíří kořenový svazek na celý disk, doinstaluje
