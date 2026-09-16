@@ -121,6 +121,42 @@ if command -v docker >/dev/null 2>&1; then
 fi
 info "Nové balíčky se přidávají do nastroje/balicky.txt, ne sem."
 
+# --------------------------------------------- 4b. doplňky hypervizoru
+krok "4b/9 Doplňky hypervizoru (schránka, rozlišení)"
+# Bez nich se ve VM nedá kopírovat mezi hostitelem a hostem a okno nemění
+# rozlišení — na to žáci narazí hned první hodinu. Balíčky z Ubuntu jsou
+# lepší než ISO s Guest Additions: nic se nepřekládá (moduly vboxguest,
+# vboxsf a vboxvideo jsou přímo v jádře Ubuntu) a přežije to aktualizaci
+# jádra. Hypervizor se pozná sám, ať skript sedí na VirtualBox i na VMware.
+HV="$(systemd-detect-virt 2>/dev/null || echo none)"
+case "$HV" in
+  oracle)
+    info "Běžíme ve VirtualBoxu"
+    # virtualbox-guest-* je v multiverse — na Serveru bývá zapnuté, ale
+    # ověřit se to musí, jinak apt jen řekne „nemá kandidáta".
+    if ! apt-cache policy virtualbox-guest-utils 2>/dev/null | grep -q 'Candidate: [0-9]'; then
+      varuj "virtualbox-guest-utils není dostupný — chybí nejspíš multiverse"
+      info "Zapni ho:  sudo add-apt-repository multiverse && sudo apt-get update"
+    else
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq         virtualbox-guest-utils virtualbox-guest-x11         && ok "Doplňky VirtualBoxu nainstalovány"         || chyba "Instalace doplňků VirtualBoxu selhala"
+      # Ověřovací příkaz se musí ověřit taky: balíček se nainstaluje i tehdy,
+      # když modul v jádře není, a schránka pak beze slova nefunguje.
+      if modinfo vboxguest >/dev/null 2>&1; then
+        ok "Modul vboxguest je v jádře k dispozici"
+      else
+        varuj "Modul vboxguest v jádře není — schránka ani rozlišení fungovat nebudou"
+        info "Doinstaluj:  sudo apt-get install linux-modules-extra-\$(uname -r)"
+      fi
+    fi ;;
+  vmware)
+    info "Běžíme ve VMware (cylab)"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq       open-vm-tools open-vm-tools-desktop       && ok "open-vm-tools nainstalovány"       || chyba "Instalace open-vm-tools selhala" ;;
+  none)
+    info "Neběžíme ve virtuálu — doplňky hypervizoru přeskakuji" ;;
+  *)
+    info "Hypervizor '$HV' neznám — doplňky nech na sobě" ;;
+esac
+
 # ------------------------------------------------------------ 3. LXD
 krok "5/9 LXD"
 if command -v lxc >/dev/null 2>&1; then
@@ -262,8 +298,8 @@ if [ "${ODHLASIT:-0}" = "1" ]; then
   printf '  \033[0;33mNEŽ BUDEŠ POKRAČOVAT:\033[0m odhlas se a znovu přihlas\n'
   printf '  (nebo restartuj VM) — jinak nebude fungovat lxc bez sudo.\n\n'
 fi
-echo "  Doporučeno ve VirtualBoxu (kvůli schránce a rozlišení):"
-echo "     Zařízení → Připojit obraz CD s Guest Additions"
+echo "  Schránku a rozlišení řeší krok 4b sám (balíčky z Ubuntu)."
+echo "  ISO s Guest Additions připojuj jen tehdy, když 4b ohlásil potíž."
 echo
 echo "  Až se přihlásíš zpět, spusť ověření předpokladů plánu:"
 echo "     bash ~/os-lab/nastroje/overeni-prostredi.sh"

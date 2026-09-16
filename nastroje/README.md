@@ -8,7 +8,12 @@ je vyučující při stavbě šablony, ne žáci v hodině.
 Výchozí stav: **Ubuntu Server 26.04 LTS** (x86_64 na školní stanici,
 arm64 na vývojové VM — postup je stejný).
 
+> **Stavíš celou žákovskou VM od nuly?** Tenhle seznam je jen jádro postupu.
+> Celá cesta — parametry VM, volby instalátoru, past s Hyper-V, úklid před
+> exportem a rozdání na stanice — je ve **[VM-virtualbox.md](VM-virtualbox.md)**.
+
 ```bash
+sudo apt update && sudo apt install -y git   # na čerstvém Serveru git není
 git clone https://github.com/eduxo/os-lab.git ~/os-lab
 
 bash ~/os-lab/nastroje/priprava-stanice.sh    # 1. připraví systém
@@ -17,11 +22,17 @@ bash ~/os-lab/nastroje/overeni-prostredi.sh   # 2. ověří předpoklady
 ```
 
 ### `priprava-stanice.sh`
-Devět kroků: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
+Kroky: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
 **prostředí MATE** (`ubuntu-mate-core`, ptá se — stahuje stovky MB) · nástroje pro
-laby · **LXD** s úložištěm btrfs · inicializace LXD · izolovaná síť `netlab` pro
-cvičení s DNS a DHCP · předstažení obrazu kontejnerů do lokální cache ·
-nastavení hesla roota.
+laby · **doplňky hypervizoru** · **LXD** s úložištěm btrfs · inicializace LXD ·
+izolovaná síť `netlab` pro cvičení s DNS a DHCP · předstažení obrazu kontejnerů
+a obrazů Dockeru do lokální cache · nastavení hesla roota.
+
+> **Doplňky hypervizoru (krok 4b)** se řídí tím, co vrátí `systemd-detect-virt`:
+> ve VirtualBoxu `virtualbox-guest-utils` + `-x11` (z **multiverse**), ve VMware
+> `open-vm-tools`. Balíčky z Ubuntu jsou lepší než ISO s Guest Additions —
+> nic se nepřekládá a přežijí aktualizaci jádra. Bez nich nefunguje schránka
+> mezi hostitelem a hostem ani automatické rozlišení.
 
 > **K čemu je rozšíření svazku:** instalátor Ubuntu Serveru vytvoří LVM svazek
 > jen na část disku — na 100GB disku typicky 48 GB — a zbytek nechá ve skupině
@@ -61,4 +72,10 @@ bash ~/os-lab/nastroje/test-fstab.sh oprav     # vrátí zpátky
 
 ## Až je hotovo
 
-Vypnout VM a udělat snapshot `cista-sablona` — z něj vycházejí žákovské kopie.
+Šablonu je potřeba **před exportem uklidit** — hlavně smazat `~/.os-lab-zak`
+a `~/.ssh/id_*`, jinak má celá třída stejné číslo žáka i stejný privátní klíč.
+Úplný seznam je ve [VM-virtualbox.md](VM-virtualbox.md), oddíl „Úklid před
+exportem".
+
+Pak VM vypnout, exportovat do OVA a na každé stanici hned po importu udělat
+snapshot `cista-sablona` — z něj se žák vrací, když si VM rozbije.
