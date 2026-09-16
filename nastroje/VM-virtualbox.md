@@ -150,97 +150,37 @@ Od druhého spuštění ho pouštěj rovnou z repozitáře
 (`bash ~/os-lab/nastroje/priprava-stanice.sh`) — je tam vždy nejnovější verze
 a skript si ho sám aktualizuje.
 
-Skript se ptá jen na dvě věci — jestli doinstalovat MATE a jaké má být heslo
-roota. Zbytek udělá sám: rozšíří kořenový svazek na celý disk, doinstaluje
-balíčky ze `balicky.txt`, **doplňky hypervizoru** (pozná VirtualBox sám a vezme
-`virtualbox-guest-utils` z multiverse — nic se nepřekládá a přežije to
-aktualizaci jádra), LXD s btrfs, síť `netlab`, obraz `ubuntu-26.04` do lokální
-cache a obrazy Dockeru.
+Skript se ptá jen na tři věci — jestli rozšířit kořenový svazek na celý disk,
+jestli doinstalovat MATE a jaké má být heslo roota. Zbytek udělá sám: balíčky
+ze `balicky.txt`, **vzhled eduxo** (pozadí plochy i přihlašovací obrazovky,
+motiv Yaru-blue, domovská stránka Firefoxu), **doplňky hypervizoru** (pozná
+VirtualBox sám, zapne multiverse a vezme `virtualbox-guest-utils`), LXD
+s btrfs, síť `netlab`, obraz `ubuntu-26.04` do lokální cache a obrazy Dockeru.
+Stažená kopie skriptu se na konci sama smaže.
 
-**Odhlas se a přihlas znovu** — jinak se neprojeví členství ve skupinách
-`lxd` a `docker`.
+Po doběhnutí **restartuj** a podívej se, že sedí vzhled, přihlašovací obrazovka
+a schránka. Pak stanici **vypni a exportuj** — nic dalšího v šabloně dělat
+nemusíš.
+
+> **Cvičení v šabloně nezkoušej.** První spuštění kteréhokoli cvičení uloží do
+> stanice tvoje číslo žáka (`~/.os-lab-zak`) a to by pak měla celá třída.
+> Zkoušej na **importované kopii** — tu po zkoušce klidně smaž.
+
+Na té kopii pak:
 
 ```bash
 bash ~/os-lab/nastroje/overeni-prostredi.sh
-```
-
-Tohle je ta část, kvůli které má každý blok labů v kartách seznam „Nutno ověřit
-před odučením". Projdi jeho výstup řádek po řádku — hlavně jestli v
-nepřivilegovaném kontejneru funguje `ufw`, protože na tom stojí cvičení 13, 18
-i souborná práce.
-
-### Rychlá zkouška, že to opravdu žije
-
-```bash
 cd ~/os-lab/3-lin/16-web-server && ./start.sh && ./check.sh
 cd ~/os-lab/3-lin/21-docker      && ./start.sh && ./check.sh
 ```
 
-První ověří LXD, síť, SSH a kontejnerový obraz; druhý Docker. Pak po sobě ukliď:
-
-```bash
-cd ~/os-lab/3-lin/16-web-server && ./reset.sh   # potvrdit
-lxc list        # musí být prázdné
-docker ps -a    # musí být prázdné
-```
+První příkaz ověří předpoklady (hlavně jestli v kontejneru funguje `ufw`, na
+kterém stojí cvičení 13, 18 i souborná práce), druhý LXD, síť, SSH
+a kontejnerový obraz, třetí Docker.
 
 ---
 
-## 4. Úklid před exportem
-
-**Tohle je nejdůležitější krok celého postupu.** Co zůstane v šabloně, to bude
-mít třicet žáků stejné.
-
-```bash
-# 1. Číslo žáka — jinak je celá třída „žák 7" a všichni si sáhnou na týž kontejner
-rm -f ~/.os-lab-zak
-
-# 2. SSH klíč — cvičení 3/04 si ho žák vyrábí sám; sdílený privátní klíč
-#    v šabloně je nesmysl a to cvičení by nedávalo smysl
-rm -f ~/.ssh/id_* ~/.ssh/known_hosts
-
-# 3. Nic nesmí zůstat běžet
-lxc list && docker ps -a          # obojí prázdné
-
-# 4. Identita stroje — ať si ji každá kopie vygeneruje vlastní
-sudo truncate -s0 /etc/machine-id
-sudo rm -f /var/lib/dbus/machine-id
-sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
-
-# 5. Balíčkovou cache pryč
-sudo apt-get clean
-
-# 6. Historie příkazů AŽ NAKONEC a s vypnutým zápisem — jinak by ji
-#    odhlášení zapsalo znovu i s celým tímhle úklidem
-unset HISTFILE
-cat /dev/null > ~/.bash_history && history -c
-
-sudo poweroff
-```
-
-> Pořadí u posledního bodu není kosmetika: kdybys historii mazal dřív, bash by
-> ji při odhlášení zapsal znovu — a byl by v ní i tenhle úklid.
-
-> **Po úklidu už VM nezapínej a rovnou exportuj.** Při dalším startu si systém
-> vygeneruje nové `machine-id` a to by pak v šabloně měli všichni stejné.
-
-> **Volné místo nulovat (`dd if=/dev/zero`) NEDOPORUČUJU.** Na dynamickém disku
-> by to nafouklo soubor VDI na plnou velikost — u 100GB disku by hostitel
-> potřeboval 100 GB volného místa a trvalo by to dlouho. Export do OVA ukládá
-> jen obsazené bloky, takže na čerstvě postavené šabloně nulováním skoro nic
-> neušetříš.
-
-**Vzhled nastavuje skript sám** (krok „Vzhled stanice eduxo"): pozadí
-`img/eduxo_wallpaper.jpg`, motiv Yaru-blue, domovskou stránku Firefoxu
-`https://www.eduxo.cz` a pozadí přihlašovací obrazovky. Ručně zbývá jen:
-
-- **Firefox** — když jsi v něm při stavbě cokoli prohlížel: Historie → Vymazat
-  nedávnou historii → *Vše*. Zkontroluj, že nejsi k ničemu přihlášený a nemáš
-  uložená hesla.
-
----
-
-## 5. Export a rozdání
+## 4. Export a rozdání
 
 Na hostiteli, s vypnutou VM:
 
@@ -266,7 +206,7 @@ když si žák VM rozbije — a u VM, která má vydržet celý rok, se to stane
 
 ---
 
-## 6. Rituál začátku hodiny
+## 5. Rituál začátku hodiny
 
 Žák po přihlášení do VM:
 

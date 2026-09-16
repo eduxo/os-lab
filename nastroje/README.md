@@ -9,8 +9,8 @@ Výchozí stav: **Ubuntu Server 26.04 LTS** (x86_64 na školní stanici,
 arm64 na vývojové VM — postup je stejný).
 
 > **Stavíš celou žákovskou VM od nuly?** Tenhle seznam je jen jádro postupu.
-> Celá cesta — parametry VM, volby instalátoru, past s Hyper-V, úklid před
-> exportem a rozdání na stanice — je ve **[VM-virtualbox.md](VM-virtualbox.md)**.
+> Celá cesta — parametry VM, volby instalátoru, past s Hyper-V, export
+> a rozdání na stanice — je ve **[VM-virtualbox.md](VM-virtualbox.md)**.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/priprava-stanice.sh -o priprava-stanice.sh
@@ -82,10 +82,11 @@ bash ~/os-lab/nastroje/test-fstab.sh oprav     # vrátí zpátky
 
 ## Až je hotovo
 
-Šablonu je potřeba **před exportem uklidit** — hlavně smazat `~/.os-lab-zak`
-a `~/.ssh/id_*`, jinak má celá třída stejné číslo žáka i stejný privátní klíč.
-Úplný seznam je ve [VM-virtualbox.md](VM-virtualbox.md), oddíl „Úklid před
-exportem".
+Po doběhnutí skriptu restartovat, zkontrolovat vzhled a schránku, VM vypnout
+a exportovat do OVA. Nic dalšího v šabloně dělat netřeba.
 
-Pak VM vypnout, exportovat do OVA a na každé stanici hned po importu udělat
-snapshot `cista-sablona` — z něj se žák vrací, když si VM rozbije.
+**Cvičení v šabloně nezkoušej** — první spuštění uloží do stanice číslo žáka
+a to by pak měla celá třída. Zkoušej na importované kopii.
+
+Na každé stanici hned po importu udělat snapshot `cista-sablona` — z něj se
+žák vrací, když si VM rozbije.
