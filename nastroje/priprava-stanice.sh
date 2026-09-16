@@ -405,6 +405,41 @@ case "$HV" in
       fi
       info "Schránku je potřeba zapnout i ve VirtualBoxu — ve výchozím stavu je vypnutá:"
       info "Zařízení → Sdílená schránka → Obousměrná"
+
+      # Automatické přizpůsobení obrazovky. S hostitelem VirtualBox 7.1 a
+      # doplňky 7.2 z Ubuntu nová velikost okna do stanice DORAZÍ (xrandr ji
+      # ukáže jako doporučený režim „+"), ale nikdo ji nepoužije. Hlídač
+      # v sezení ji použije, když se doporučený režim ZMĚNÍ — na rozlišení,
+      # které si žák nastaví ručně, nesahá. Až se verze srovnají a začne to
+      # fungovat samo, hlídač nemá co dělat a neškodí.
+      sudo tee /usr/local/bin/eduxo-obrazovka >/dev/null <<'HLIDAC'
+#!/bin/bash
+# eduxo: přizpůsobí obrazovku velikosti okna VirtualBoxu.
+# Spouští se při přihlášení do MATE (/etc/xdg/autostart/eduxo-obrazovka.desktop).
+[ "$(systemd-detect-virt 2>/dev/null)" = "oracle" ] || exit 0
+command -v xrandr >/dev/null 2>&1 || exit 0
+predchozi=""
+while sleep 2; do
+  vystup="$(xrandr 2>/dev/null)" || exit 0          # X skončilo → konec sezení
+  vystup_jmeno="$(printf '%s\n' "$vystup" | awk '/ connected/{print $1; exit}')"
+  doporuceny="$(printf '%s\n' "$vystup" | awk '/ connected/{f=1; next} f && /^[^ ]/{exit} f && /\+/{print $1; exit}')"
+  [ -n "$vystup_jmeno" ] && [ -n "$doporuceny" ] || continue
+  if [ -n "$predchozi" ] && [ "$doporuceny" != "$predchozi" ]; then
+    xrandr --output "$vystup_jmeno" --auto
+  fi
+  predchozi="$doporuceny"
+done
+HLIDAC
+      sudo chmod 755 /usr/local/bin/eduxo-obrazovka
+      sudo tee /etc/xdg/autostart/eduxo-obrazovka.desktop >/dev/null <<'SPUSTENI'
+[Desktop Entry]
+Type=Application
+Name=eduxo — přizpůsobení obrazovky
+Exec=/usr/local/bin/eduxo-obrazovka
+NoDisplay=true
+OnlyShowIn=MATE;
+SPUSTENI
+      ok "Přizpůsobení obrazovky velikosti okna (projeví se po přihlášení)"
     fi ;;
   vmware)
     info "Běžíme ve VMware (cylab)"

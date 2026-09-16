@@ -227,6 +227,12 @@ Až ho projdeš, oprav tady, co nesedělo:
 1. ~~Jestli je v obrazu 26.04 multiverse zapnuté.~~ **Ověřeno 2026-09-16 na
    školní šabloně: NENÍ.** Skript ho teď zapíná sám. Ve VirtualBoxu je navíc
    potřeba ručně přepnout **Zařízení → Sdílená schránka → Obousměrná**.
+1b. **Automatické přizpůsobení obrazovky — ověřeno 2026-09-16: samo nefunguje.**
+   Hostitel VirtualBox 7.1.12, doplňky z Ubuntu 7.2.6. Nová velikost okna do
+   stanice dorazí (`xrandr` ji ukáže s `+`), ale nepoužije se. Skript proto
+   přidává hlídač `/usr/local/bin/eduxo-obrazovka`, který ji použije. **Po
+   přechodu školy na VirtualBox 7.2.6** vyzkoušej, jestli to funguje i bez
+   něj — hlídač pak nemá co dělat a klidně může zůstat.
 2. **Jestli je modul `vboxguest` v jádře** (`modinfo vboxguest`). Skript to
    kontroluje a poradí `linux-modules-extra`, ale nevyzkoušeno to je.
 3. **Kolik po stavbě zabírá soubor VDI** — a jestli se to vejde do žákovského
