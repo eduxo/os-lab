@@ -207,10 +207,8 @@ sudo truncate -s0 /etc/machine-id
 sudo rm -f /var/lib/dbus/machine-id
 sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
 
-# 5. Balíčkovou cache pryč a volné místo vynulovat — OVA se pak zabalí
-#    na zlomek velikosti (disk se dočasně zaplní, to je v pořádku)
+# 5. Balíčkovou cache pryč
 sudo apt-get clean
-sudo dd if=/dev/zero of=/EMPTY bs=1M status=progress; sudo rm -f /EMPTY; sync
 
 # 6. Historie příkazů AŽ NAKONEC a s vypnutým zápisem — jinak by ji
 #    odhlášení zapsalo znovu i s celým tímhle úklidem
@@ -222,6 +220,24 @@ sudo poweroff
 
 > Pořadí u posledního bodu není kosmetika: kdybys historii mazal dřív, bash by
 > ji při odhlášení zapsal znovu — a byl by v ní i tenhle úklid.
+
+> **Po úklidu už VM nezapínej a rovnou exportuj.** Při dalším startu si systém
+> vygeneruje nové `machine-id` a to by pak v šabloně měli všichni stejné.
+
+> **Volné místo nulovat (`dd if=/dev/zero`) NEDOPORUČUJU.** Na dynamickém disku
+> by to nafouklo soubor VDI na plnou velikost — u 100GB disku by hostitel
+> potřeboval 100 GB volného místa a trvalo by to dlouho. Export do OVA ukládá
+> jen obsazené bloky, takže na čerstvě postavené šabloně nulováním skoro nic
+> neušetříš.
+
+**Po personalizaci navíc:**
+
+- **Firefox** — Historie → Vymazat nedávnou historii → *Vše*. Domovská stránka
+  zůstane, protože je to nastavení, ne historie. Zkontroluj, že v něm nejsi
+  přihlášený k žádnému účtu a nemáš uložená žádná hesla (Nastavení → Hesla).
+- **Pozadí plochy** — obrázek musí ležet uvnitř VM (třeba `~/Obrázky` nebo
+  `/usr/share/backgrounds`). Když na něj pozadí odkazuje ze sdílené složky,
+  žákům se místo něj zobrazí černá plocha.
 
 ---
 
