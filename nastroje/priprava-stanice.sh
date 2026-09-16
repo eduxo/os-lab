@@ -453,6 +453,22 @@ SPUSTENI
     info "Hypervizor '$HV' neznám — doplňky nech na sobě" ;;
 esac
 
+# Bluetooth ve VM není. blueman-applet (správce Bluetoothu v MATE) se přesto
+# spouští při každém přihlášení, spadne a Ubuntu pak žákovi ukáže hlášku
+# „Ubuntu 26.04 has experienced an internal error". Pro ubuntu-mate-core je
+# blueman jen doporučený (Recommends), takže odinstalace MATE nenaruší.
+if [ "$HV" != "none" ]; then
+  if dpkg -s blueman >/dev/null 2>&1; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq blueman >/dev/null 2>&1 \
+      && ok "Správce Bluetoothu (blueman) odinstalován — ve VM jen padal" \
+      || varuj "blueman se odinstalovat nepodařilo"
+  else
+    ok "Správce Bluetoothu (blueman) na stanici není"
+  fi
+  # Uložený záznam o pádu by jinak hlášku ukázal po prvním přihlášení znovu
+  sudo rm -f /var/crash/_usr_bin_blueman-applet.*
+fi
+
 # ------------------------------------------------------------ LXD
 krok "LXD"
 if snap list lxd >/dev/null 2>&1; then
