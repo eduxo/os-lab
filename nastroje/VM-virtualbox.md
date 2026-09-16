@@ -60,20 +60,26 @@ někdo tvrdil opak, mýlí se.
 
 | Položka | Hodnota | Proč |
 |---|---|---|
-| Název | `os-lab-sablona` | |
+| Název | `eduxo Ubuntu` | |
 | Typ | Linux / Ubuntu (64-bit) | |
-| Paměť | **4096 MB** (6144, když má stanice 16 GB) | MATE ~800 MB + dva kontejnery + Docker |
+| Paměť | **6144 MB** | MATE ~800 MB + dva kontejnery + Docker, s rezervou |
 | Procesory | **2** | |
-| Disk | **60 GB, VDI, dynamicky alokovaný** | viz níže |
+| Disk | **100 GB, VDI, dynamicky alokovaný** | viz níže |
 | Grafika | VMSVGA, **128 MB** videopaměti | MATE s 16 MB nenaběhne pořádně |
 | 3D akcelerace | **vypnutá** | s MATE dělá artefakty, k ničemu tu není |
 | Síť | **NAT** | vše se děje uvnitř VM; nezatěžuje školní síť třiceti adresami |
+| Adresa VM | `10.0.2.15/24` z DHCP | tu dává NAT engine VirtualBoxu, je stejná na všech stanicích a je to v pořádku |
 | Paravirtualizace | KVM | |
 
-**Proč 60 GB:** samotné úložiště LXD je btrfs **v souboru o 25 GiB**
+**Proč 100 GB:** samotné úložiště LXD je btrfs **v souboru o 25 GiB**
 (`lxd init` ho zakládá s `size: 25GiB`), k tomu Ubuntu Server ~3 GB, MATE
-~2,5 GB, obraz kontejnerů, obrazy Dockeru a místo na růst. Se 40 GB dojde
-místo uprostřed roku.
+~2,5 GB, obraz kontejnerů, obrazy Dockeru a místo na růst. Minimum je 60 GB,
+100 dává rezervu na celý rok.
+
+> **Pozor na past instalátoru:** na 100GB disku vyrobí LVM svazek jen asi
+> **48 GB** a zbytek nechá ve skupině ležet ladem. `priprava-stanice.sh` to
+> v kroku 2 pozná a rozšíří na celý disk za provozu, bez restartu. Nemusíš
+> s tím nic dělat — jen se nelekni, když `df -h` hned po instalaci ukáže půlku.
 
 > ⚠️ **Dynamický disk roste, ale sám se nezmenší.** Po stavbě má soubor VDI
 > zhruba 14–18 GB a během roku poroste. Když VM leží v žákovském profilu,
@@ -98,11 +104,20 @@ Volby v instalátoru:
 | Proxy, zrcadlo | nechat prázdné / výchozí |
 | Disk | **Use an entire disk** + **Set up this disk as an LVM group** |
 | Šifrování disku (LUKS) | **nezaškrtávat** — chtělo by heslo při každém startu |
-| Jméno serveru | `os-lab` |
-| Uživatel | `zak` (na jménu nic nezávisí, ale ať je všude stejné) |
+| Jméno serveru | `ubuntu` |
+| Uživatel | **`sysadmin`** — `priprava-stanice.sh` s tím jménem počítá |
 | Upgrade to Ubuntu Pro | Skip |
 | OpenSSH server | **nezaškrtávat** — doinstaluje ho `priprava-stanice.sh` ze `balicky.txt` |
 | Featured snaps | nic |
+
+> **Heslo stanice** si zvol jaké chceš, ale **nikdy ho nepiš do repozitáře** —
+> platí pro něj totéž pravidlo jako pro všechno ostatní. Hesla do kontejnerů
+> se losují na stanici a zůstávají na ní, v `os-labu` po nich není stopa.
+
+> **Účet `sysadmin` je na stanici i v kontejnerech.** Není to nedopatření:
+> odlišuje je jméno stroje v promptu (`sysadmin@ubuntu` proti
+> `sysadmin@web-07`) a přesně tohle má 3. ročník žáky učit sledovat —
+> každý krok zadání říká, na kterém stroji se provádí.
 
 > **Klávesnice:** volím US, protože se celý rok píše v terminálu a znaky
 > `/ \ | ~ { }` jsou na české klávesnici přes `AltGr` nebo vůbec. Žáci za to
@@ -117,18 +132,22 @@ Odstranit disk z jednotky), jinak se VM bude pořád bootovat z instalátoru.
 
 ## 3. Stavba prostředí
 
-Na čerstvém Serveru **není `git`** — instalátor ho nedává:
+Na čerstvém Serveru **není `git`**, kterým by se repozitář stáhl. Řeší to
+`bootstrap.sh` — doinstaluje git, stáhne `os-lab` a předá řízení přípravě:
 
 ```bash
-sudo apt update && sudo apt install -y git
-git clone https://github.com/eduxo/os-lab.git ~/os-lab
+curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/bootstrap.sh -o bootstrap.sh
+less bootstrap.sh      # podívej se, co pouštíš
+bash bootstrap.sh
 ```
 
-Pak samotná příprava. Trvá desítky minut a stahuje stovky MB:
+Celé to trvá desítky minut a stahuje stovky MB.
 
-```bash
-bash ~/os-lab/nastroje/priprava-stanice.sh
-```
+> Kdyby na stanici nebyl ani `curl`, jde totéž ručně:
+> `sudo apt update && sudo apt install -y git && git clone https://github.com/eduxo/os-lab.git ~/os-lab && bash ~/os-lab/nastroje/priprava-stanice.sh`
+
+Na už postavené stanici se `bootstrap.sh` pustit dá taky — jen aktualizuje
+repozitář a doplní, co chybí.
 
 Skript se ptá jen na dvě věci — jestli doinstalovat MATE a jaké má být heslo
 roota. Zbytek udělá sám: rozšíří kořenový svazek na celý disk, doinstaluje

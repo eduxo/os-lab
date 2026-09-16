@@ -13,13 +13,17 @@ arm64 na vývojové VM — postup je stejný).
 > exportem a rozdání na stanice — je ve **[VM-virtualbox.md](VM-virtualbox.md)**.
 
 ```bash
-sudo apt update && sudo apt install -y git   # na čerstvém Serveru git není
-git clone https://github.com/eduxo/os-lab.git ~/os-lab
-
-bash ~/os-lab/nastroje/priprava-stanice.sh    # 1. připraví systém
-# odhlásit a znovu přihlásit (skupina lxd)
+curl -fsSL https://raw.githubusercontent.com/eduxo/os-lab/main/nastroje/bootstrap.sh -o bootstrap.sh
+bash bootstrap.sh                             # 1. git + repozitář + příprava
+# odhlásit a znovu přihlásit (skupiny lxd a docker)
 bash ~/os-lab/nastroje/overeni-prostredi.sh   # 2. ověří předpoklady
 ```
+
+### `bootstrap.sh`
+Řeší slepici a vejce: příprava žije v tomhle repozitáři, ale na čerstvém
+Ubuntu Serveru není `git`, kterým by se stáhl. Doinstaluje git, naklonuje
+`os-lab` do `~/os-lab` a předá řízení `priprava-stanice.sh`. Na už postavené
+stanici jen aktualizuje repozitář. Idempotentní.
 
 ### `priprava-stanice.sh`
 Kroky: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
