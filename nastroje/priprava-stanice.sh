@@ -677,9 +677,21 @@ else
         || varuj "Obraz $OBRAZ se nepodařilo načíst ze zálohy"
     else
       info "Stahuji $OBRAZ (jednorázově, při stavbě šablony)..."
-      sudo docker pull "$OBRAZ" >/dev/null 2>&1 \
-        && ok "Obraz $OBRAZ stažen" \
-        || varuj "Obraz $OBRAZ se nepodařilo stáhnout — laby 3/21 a 3/21b bez něj nepojedou"
+      # Docker Hub bývá ze školní sítě nedostupný (ověřeno 2026-09-16: spojení
+      # vyprší, GitHub přitom odpoví hned). Oficiální obrazy jsou i na
+      # zrcadle Googlu; stažený obraz se přejmenuje na jméno, které čekají
+      # cvičení (nginx:alpine, alpine:latest), a jméno ze zrcadla se odebere.
+      ZRCADLO="mirror.gcr.io/library/$OBRAZ"
+      if sudo docker pull "$OBRAZ" >/dev/null 2>&1; then
+        ok "Obraz $OBRAZ stažen"
+      elif sudo docker pull "$ZRCADLO" >/dev/null 2>&1 \
+           && sudo docker tag "$ZRCADLO" "$OBRAZ" >/dev/null 2>&1; then
+        sudo docker rmi "$ZRCADLO" >/dev/null 2>&1
+        ok "Obraz $OBRAZ stažen ze zrcadla mirror.gcr.io (Docker Hub neodpověděl)"
+      else
+        varuj "Obraz $OBRAZ se nepodařilo stáhnout z Docker Hubu ani ze zrcadla"
+        info  "Laby 3/21 a 3/21b bez něj nepojedou. Zkus skript pustit znovu později."
+      fi
     fi
     if [ ! -f "$SOUBOR" ]; then
       sudo docker save -o "$SOUBOR" "$OBRAZ" >/dev/null 2>&1 \
