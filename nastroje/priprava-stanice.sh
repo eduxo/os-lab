@@ -165,6 +165,129 @@ else
   fi
 fi
 
+# ------------------------------------------------------------ vzhled
+krok "Vzhled stanice eduxo"
+# Pozadí, motiv, domovská stránka Firefoxu a přihlašovací obrazovka.
+# Nastavuje se jako VÝCHOZÍ hodnota pro všechny účty (gschema override), ne
+# do profilu jednoho uživatele: při první stavbě skript běží dřív, než
+# existuje grafické sezení, a uživatelské gsettings bez něj zapsat nejdou.
+# Kdo si vzhled změní sám, tomu zůstane jeho.
+POZADI_ZDROJ="$REPO_DIR/img/eduxo_wallpaper.jpg"
+POZADI=/usr/share/backgrounds/eduxo/eduxo_wallpaper.jpg
+MOTIV=Yaru-blue
+DOMOVSKA=https://www.eduxo.cz
+
+# Pozadí musí ležet MIMO domovské složky: přihlašovací obrazovka běží pod
+# účtem lightdm a do /home/sysadmin nevidí.
+if [ -f "$POZADI_ZDROJ" ]; then
+  sudo install -D -m 644 "$POZADI_ZDROJ" "$POZADI" && ok "Pozadí zkopírováno do $POZADI"
+else
+  varuj "V repozitáři chybí $POZADI_ZDROJ — pozadí se nenastaví"
+  POZADI=""
+fi
+
+# Firefox (snap i deb) čte podnikové politiky z /etc/firefox/policies.
+# Locked=false: žák si domovskou stránku smí změnit.
+sudo mkdir -p /etc/firefox/policies
+printf '{\n  "policies": {\n    "Homepage": { "URL": "%s", "StartPage": "homepage", "Locked": false }\n  }\n}\n' \
+  "$DOMOVSKA" | sudo tee /etc/firefox/policies/policies.json >/dev/null \
+  && ok "Firefox: domovská stránka $DOMOVSKA"
+
+# Pozadí a motiv plochy
+SCHEMATA=/usr/share/glib-2.0/schemas
+OVR="$SCHEMATA/99_eduxo.gschema.override"
+if ! command -v glib-compile-schemas >/dev/null 2>&1 || [ ! -f "$SCHEMATA/org.mate.background.gschema.xml" ]; then
+  varuj "MATE není nainstalované — pozadí a motiv plochy přeskakuji"
+else
+  OBSAH=""
+  [ -n "$POZADI" ] && OBSAH+="[org.mate.background]
+picture-filename='$POZADI'
+picture-options='zoom'
+
+"
+  # Motiv se skládá z několika částí (ovládací prvky, okna, ikony, kurzor).
+  # Když má metamotiv index.theme, vezmou se odtud přesně jako v dialogu
+  # Vzhled; jinak se použije totéž jméno všude, kde takový motiv existuje.
+  META="/usr/share/themes/$MOTIV/index.theme"
+  cast() { [ -f "$META" ] && sed -n "s/^$1=//p" "$META" | head -1; }
+  GTK="$(cast GtkTheme)";      GTK="${GTK:-$MOTIV}"
+  OKNA="$(cast MetacityTheme)"; [ -z "$OKNA" ] && [ -d "/usr/share/themes/$MOTIV/metacity-1" ] && OKNA="$MOTIV"
+  IKONY="$(cast IconTheme)";   [ -z "$IKONY" ] && [ -d "/usr/share/icons/$MOTIV" ] && IKONY="$MOTIV"
+  KURZOR="$(cast CursorTheme)"
+  if [ -d "/usr/share/themes/$GTK" ]; then
+    OBSAH+="[org.mate.interface]
+gtk-theme='$GTK'
+"
+    [ -n "$IKONY" ] && OBSAH+="icon-theme='$IKONY'
+"
+    [ -n "$OKNA" ] && OBSAH+="
+[org.mate.Marco.general]
+theme='$OKNA'
+"
+    [ -n "$KURZOR" ] && OBSAH+="
+[org.mate.peripherals-mouse]
+cursor-theme='$KURZOR'
+"
+  else
+    varuj "Motiv $MOTIV na stanici není — motiv se nenastaví"
+  fi
+
+  printf '%s' "$OBSAH" | sudo tee "$OVR" >/dev/null
+  # Rozbité schéma by rozbilo nastavení celého prostředí — kompilace se
+  # proto ověřuje, a když selže, náš soubor jde pryč.
+  if sudo glib-compile-schemas "$SCHEMATA" 2>/dev/null; then
+    # Ověřovací příkaz se musí ověřit taky: čte se výchozí hodnota mimo
+    # profil uživatele (paměťový backend), tedy to, co dostane nový účet.
+    SKUT="$(GSETTINGS_BACKEND=memory gsettings get org.mate.interface gtk-theme 2>/dev/null)"
+    [ "$SKUT" = "'$GTK'" ] && ok "Motiv plochy: $GTK" || varuj "Motiv se neprojevil (výchozí je $SKUT)"
+    if [ -n "$POZADI" ]; then
+      SKUT="$(GSETTINGS_BACKEND=memory gsettings get org.mate.background picture-filename 2>/dev/null)"
+      [ "$SKUT" = "'$POZADI'" ] && ok "Pozadí plochy nastaveno" || varuj "Pozadí se neprojevilo (výchozí je $SKUT)"
+    fi
+  else
+    sudo rm -f "$OVR"; sudo glib-compile-schemas "$SCHEMATA" 2>/dev/null
+    chyba "Nastavení vzhledu nešlo zkompilovat — vráceno do původního stavu"
+  fi
+fi
+
+# Přihlašovací obrazovka. Ubuntu MATE přihlašovací program mezi verzemi
+# měnil (slick-greeter ↔ arctica-greeter) a nastavení toho druhého se pak
+# tiše ignoruje — proto se nejdřív zjistí, který je opravdu nastavený.
+GREETER="$(grep -rhs '^greeter-session' /usr/share/lightdm/lightdm.conf.d/ /etc/lightdm/lightdm.conf.d/ /etc/lightdm/lightdm.conf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d ' ')"
+if [ -z "$POZADI" ]; then
+  :
+elif [ "$GREETER" = "slick-greeter" ] || { [ -z "$GREETER" ] && [ -f /usr/share/xgreeters/slick-greeter.desktop ]; }; then
+  # Doplnit klíče do [Greeter], ostatní nastavení v souboru nechat být.
+  sudo python3 - "$POZADI" <<'PY'
+import os, sys
+cesta = "/etc/lightdm/slick-greeter.conf"
+chci = {"background": sys.argv[1], "draw-user-backgrounds": "false"}
+radky = open(cesta, encoding="utf-8").read().splitlines() if os.path.exists(cesta) else []
+ven, v_sekci, bylo, hotovo = [], False, False, set()
+def dopln():
+    for k, v in chci.items():
+        if k not in hotovo: ven.append(f"{k}={v}")
+for r in radky:
+    s = r.strip()
+    if s.startswith("["):
+        if v_sekci: dopln()
+        v_sekci = (s == "[Greeter]"); bylo = bylo or v_sekci
+        ven.append(r); continue
+    k = s.split("=", 1)[0].strip()
+    if v_sekci and k in chci:
+        ven.append(f"{k}={chci[k]}"); hotovo.add(k); continue
+    ven.append(r)
+if v_sekci: dopln()
+if not bylo:
+    ven.append("[Greeter]"); dopln()
+open(cesta, "w", encoding="utf-8").write("\n".join(ven) + "\n")
+PY
+  [ $? -eq 0 ] && ok "Přihlašovací obrazovka: pozadí eduxo (projeví se po odhlášení)" \
+               || chyba "Nastavení přihlašovací obrazovky selhalo"
+else
+  varuj "Přihlašovací program je '${GREETER:-neznámý}', ne slick-greeter — pozadí přihlášení se nenastaví"
+fi
+
 # ------------------------------------------------------------ balíčky
 krok "Balíčky pro cvičení"
 # balicky.txt je ZDROJ PRAVDY. Skript stanici podle něj SROVNÁ: doinstaluje,
@@ -445,3 +568,15 @@ echo
 echo "  Příště pouštěj skript rovnou z repozitáře — je tam vždy nejnovější:"
 echo "     bash ~/os-lab/nastroje/priprava-stanice.sh"
 echo
+
+# Kopie stažená curlem mimo repozitář už není potřeba — v šabloně by jen
+# zbyla ležet v domovské složce. Soubor, ze kterého bash právě čte, smazat
+# jde: otevřený zůstane, dokud skript nedoběhne.
+SKRIPT="$(realpath "$0" 2>/dev/null || echo "$0")"
+case "$SKRIPT" in
+  "$REPO_DIR"/*) ;;
+  *) if [ "$(basename "$SKRIPT")" = "priprava-stanice.sh" ] && rm -f "$SKRIPT"; then
+       info "Stažená kopie $SKRIPT smazána."
+       echo
+     fi ;;
+esac

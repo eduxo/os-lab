@@ -230,14 +230,13 @@ sudo poweroff
 > jen obsazené bloky, takže na čerstvě postavené šabloně nulováním skoro nic
 > neušetříš.
 
-**Po personalizaci navíc:**
+**Vzhled nastavuje skript sám** (krok „Vzhled stanice eduxo"): pozadí
+`img/eduxo_wallpaper.jpg`, motiv Yaru-blue, domovskou stránku Firefoxu
+`https://www.eduxo.cz` a pozadí přihlašovací obrazovky. Ručně zbývá jen:
 
-- **Firefox** — Historie → Vymazat nedávnou historii → *Vše*. Domovská stránka
-  zůstane, protože je to nastavení, ne historie. Zkontroluj, že v něm nejsi
-  přihlášený k žádnému účtu a nemáš uložená žádná hesla (Nastavení → Hesla).
-- **Pozadí plochy** — obrázek musí ležet uvnitř VM (třeba `~/Obrázky` nebo
-  `/usr/share/backgrounds`). Když na něj pozadí odkazuje ze sdílené složky,
-  žákům se místo něj zobrazí černá plocha.
+- **Firefox** — když jsi v něm při stavbě cokoli prohlížel: Historie → Vymazat
+  nedávnou historii → *Vše*. Zkontroluj, že nejsi k ničemu přihlášený a nemáš
+  uložená hesla.
 
 ---
 

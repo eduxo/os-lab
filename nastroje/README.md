@@ -24,7 +24,9 @@ je obstará sám a od té chvíle pracuje z `~/os-lab`.
 
 ### `priprava-stanice.sh`
 Kroky: aktualizace systému · **rozšíření kořenového svazku na celý disk** ·
-**prostředí MATE** (`ubuntu-mate-core`, ptá se — stahuje stovky MB) · nástroje pro
+**prostředí MATE** (`ubuntu-mate-core`, ptá se — stahuje stovky MB) · **vzhled
+stanice eduxo** (pozadí z `img/`, motiv Yaru-blue, domovská stránka Firefoxu,
+pozadí přihlašovací obrazovky) · nástroje pro
 laby · **doplňky hypervizoru** · **LXD** s úložištěm btrfs · inicializace LXD ·
 izolovaná síť `netlab` pro cvičení s DNS a DHCP · předstažení obrazu kontejnerů
 a obrazů Dockeru do lokální cache · nastavení hesla roota.
