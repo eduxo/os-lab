@@ -20,7 +20,15 @@ netplan_konfigurace() {
   fi
   printf '%s' "$_konf"
 }
-renderer_ze_stanice() { netplan_konfigurace | awk '/renderer:/{print $2; exit}'; }
+# Když netplan renderer neuvádí, platí výchozí networkd — tak je to na stanici
+# ze serverového obrazu. Prázdná hodnota se proto vrací jen tehdy, když se
+# konfigurace nedala přečíst vůbec.
+renderer_ze_stanice() {
+  local k r; k="$(netplan_konfigurace)"
+  [ -n "$k" ] || return 0
+  r="$(printf '%s\n' "$k" | awk '/renderer:/{print $2; exit}')"
+  printf '%s' "${r:-networkd}"
+}
 # Podle klíčového slova, ne podle pozice — trasa bez `via` má jiné pořadí polí.
 primarni_rozhrani() {
   ip route show default 2>/dev/null \
@@ -37,12 +45,8 @@ require_prikaz netplan \
 if [ -z "$(netplan_konfigurace)" ]; then
   chyba "nepodařilo se přečíst konfiguraci netplanu"
   poznamka "kontrola potřebuje práva správce — zadejte heslo, až se zeptá"
-elif [ -z "$(renderer_ze_stanice)" ]; then
-  # Bez tohohle by prázdný vzor v require_zaznam_tvar propustil jakoukoli
-  # neprázdnou odpověď a žák by dostal PASS za cokoli.
-  chyba "netplan nehlásí žádný renderer — řekněte o tom vyučujícímu"
 else
-  uspech "konfigurace netplanu jde přečíst a hlásí renderer"
+  uspech "konfigurace netplanu jde přečíst"
 fi
 
 krok 2 "Které rozhraní je volné"
@@ -100,8 +104,14 @@ krok 5 "Formulář"
 # i ze jmenovatele a žák dostane „Hotovo" za nevyplněný formulář.
 REND="$(renderer_ze_stanice)"
 if [ -n "$REND" ]; then
-  require_zaznam "$FORMULAR" renderer "$REND" \
-    "ve formuláři je program, který řídí síť"
+  # networkd se píše i celým jménem služby — obojí je správně.
+  case "$REND" in
+    networkd) VZOR='^(systemd-)?networkd$' ;;
+    *)        VZOR="^${REND}\$" ;;
+  esac
+  require_zaznam_tvar "$FORMULAR" renderer "$VZOR" \
+    "ve formuláři je program, který řídí síť" \
+    "ve formuláři není program, který na téhle stanici řídí síť"
 else
   require_zaznam_tvar "$FORMULAR" renderer '^(NetworkManager|networkd)$' \
     "ve formuláři je program, který řídí síť (přesnou shodu ověří závěrečný běh)" \

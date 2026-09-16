@@ -50,7 +50,7 @@ poznamenej_vychozi_stav() {
 vyrob_formular() {
   cat > "$FORMULAR" <<'FORMULAR_KONEC'
 # Síťová konfigurace — vyplňte hodnoty za dvojtečku.
-# renderer = který program na téhle stanici řídí síť (jméno z výstupu netplan get)
+# renderer = který program na téhle stanici řídí síť (viz Krok 1)
 # adapter  = jméno rozhraní, na které jste dali statickou adresu
 # adresa   = adresa i s prefixem, kterou jste nastavili (tvar 10.10.10.1XX/24)
 # primarni = jméno rozhraní, kterým stanice vidí ven

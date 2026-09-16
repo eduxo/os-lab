@@ -36,16 +36,21 @@ if command -v netplan >/dev/null; then
   [ -z "$R" ] && R="(neuveden — platí výchozí)"
   info "renderer v /etc/netplan: $R"
   ls -1 /etc/netplan/ 2>/dev/null | sed 's/^/         soubor: /'
-  if systemctl is-active --quiet NetworkManager; then
-    varuj "Síť řídí NetworkManager (typické pro Desktop)"
-    info "Lab 3/1 musí počítat s NM: 'netplan get', renderer: NetworkManager,"
-    info "a s tím, že NM si zapisuje vlastní YAML. Na Serveru je to systemd-networkd."
-    zapis "POZOR" "netplan" "renderer = NetworkManager, ne systemd-networkd"
-  elif systemctl is-active --quiet systemd-networkd; then
-    ok "Síť řídí systemd-networkd (jako na Serveru) — lab 3/1 beze změny"
-    zapis "OK" "netplan" "systemd-networkd"
+  # Rozhoduje, kdo RŘÍDÍ rozhraní s výchozí trasou — ne to, jestli služba běží.
+  # NetworkManager po instalaci MATE běží vždycky, i když síť nechává být;
+  # dřívější verze tohohle testu se na tom spletla a hlásila NM tam, kde síť
+  # řídil networkd.
+  IF_VEN=$(ip route show default 2>/dev/null | awk '/^default/{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
+  if networkctl list --no-legend 2>/dev/null | awk -v i="$IF_VEN" '$2==i && $5=="configured"{f=1} END{exit !f}'; then
+    ok "Rozhraní $IF_VEN řídí systemd-networkd (jako na Serveru) — s tím počítá cvičení 3/01"
+    zapis "OK" "netplan" "systemd-networkd řídí $IF_VEN"
+    systemctl is-active --quiet NetworkManager \
+      && varuj "NetworkManager přitom běží — priprava-stanice.sh ho měla vypnout"
+  elif command -v nmcli >/dev/null && nmcli -t -f DEVICE,STATE device 2>/dev/null | grep -qx "$IF_VEN:connected"; then
+    varuj "Rozhraní $IF_VEN řídí NetworkManager — cvičení 3/01 počítá s systemd-networkd"
+    zapis "POZOR" "netplan" "NetworkManager řídí $IF_VEN, čekán networkd"
   else
-    varuj "Nerozpoznáno, ověř ručně"
+    varuj "Nerozpoznáno, kdo řídí rozhraní ${IF_VEN:-?} — ověř: networkctl, nmcli device"
     zapis "POZOR" "netplan" "renderer nerozpoznán"
   fi
   info "Bezpečný test statické adresy: udělej ho na DRUHÉM, nepoužívaném adaptéru"

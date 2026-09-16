@@ -173,6 +173,86 @@ else
   fi
 fi
 
+# ------------------------------------------------------------ síť stanice
+krok "Síť stanice"
+# Stanice je Ubuntu Server a síť na ní řídí systemd-networkd — tak s ní počítá
+# cvičení 3/01. Rozhraní, kterým stanice vidí ven, se čte podle výchozí trasy.
+IF_VEN="$(ip route show default 2>/dev/null \
+  | awk '/^default/{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')"
+
+# 1) Instalátor zapíše síťovku podle MAC adresy (match: macaddress + set-name).
+#    Po importu OVA s novými MAC adresami by se nenašla a stanice by zůstala
+#    bez sítě. Přepíše se proto na JMÉNO rozhraní, ať žák nic neřeší. Sahá se
+#    jen na soubor, který přesně odpovídá tomu, co instalátor zapisuje —
+#    jedna síťovka, DHCP, vazba na MAC — nikdy na soubory od žáka.
+for F in /etc/netplan/*.yaml; do
+  [ -f "$F" ] && sudo grep -q 'macaddress:' "$F" 2>/dev/null || continue
+  JMENO="$(basename "$F")"
+  if [ -z "$IF_VEN" ] \
+     || [ "$(sudo grep -c 'macaddress:' "$F")" != "1" ] \
+     || [ "$(sudo grep -c 'set-name:' "$F")" != "1" ] \
+     || ! sudo grep -qE "set-name:[[:space:]]*$IF_VEN[[:space:]]*$" "$F" \
+     || ! sudo grep -qE 'dhcp4:[[:space:]]*true' "$F"; then
+    varuj "$F váže síťovku na MAC adresu, ale nevypadá jako soubor od instalátoru — nechávám ho"
+    continue
+  fi
+  DHCP6="$(sudo awk '/dhcp6:/{print $2; exit}' "$F")"
+  sudo mkdir -p /var/backups/netplan
+  sudo cp -p "$F" "/var/backups/netplan/$JMENO.puvodni"
+  printf '%s\n' \
+    "# Síť stanice — zapsal priprava-stanice.sh (eduxo)." \
+    "# Síťovka je podle JMÉNA, ne podle MAC adresy: po importu OVA s novými" \
+    "# MAC adresami by se jinak nenašla a stanice by zůstala bez sítě." \
+    "# Původní soubor od instalátoru: /var/backups/netplan/$JMENO.puvodni" \
+    "network:" \
+    "  version: 2" \
+    "  ethernets:" \
+    "    $IF_VEN:" \
+    "      dhcp4: true" \
+    "      dhcp6: ${DHCP6:-false}" | sudo tee "$F" >/dev/null
+  sudo chmod 600 "$F"
+  # Ověřovací příkaz se musí ověřit taky: rozbitá konfigurace sítě by se
+  # projevila až po restartu, a to už u žáka.
+  if sudo netplan generate >/dev/null 2>&1; then
+    ok "Síťovka $IF_VEN je v $JMENO podle jména, ne podle MAC adresy"
+  else
+    sudo cp -p "/var/backups/netplan/$JMENO.puvodni" "$F"
+    chyba "Nová konfigurace sítě neprošla kontrolou — vrácen původní $JMENO"
+  fi
+done
+# Aby cloud-init soubor s MAC adresou po restartu nezapsal znovu.
+if [ -d /etc/cloud/cloud.cfg.d ] && ! sudo grep -rqsE 'config:[[:space:]]*disabled' /etc/cloud/cloud.cfg.d/; then
+  printf 'network: {config: disabled}\n' | sudo tee /etc/cloud/cloud.cfg.d/99-eduxo-sit.cfg >/dev/null \
+    && ok "cloud-init už konfiguraci sítě nepřepíše"
+fi
+
+# 2) S MATE přibude NetworkManager. Síťovku neřídí (nmcli ji hlásí jako
+#    „unmanaged"), jen běží a jeho ikona v panelu ukazuje „nepřipojeno", i když
+#    síť funguje. Vypíná se, aby síť měl na starosti jediný program. Pro
+#    ubuntu-mate-core je jen doporučený, MATE tím nijak nepřijde.
+#    Vypne se ale JEN když síť opravdu řídí networkd — to, že služba běží,
+#    nic nedokazuje (na tom se kdysi spletlo ověření prostředí).
+RIDI_NETWORKD=0
+[ -n "$IF_VEN" ] && networkctl list --no-legend 2>/dev/null \
+  | awk -v i="$IF_VEN" '$2==i && $5=="configured"{f=1} END{exit !f}' && RIDI_NETWORKD=1
+if [ "$RIDI_NETWORKD" != "1" ]; then
+  varuj "Rozhraní ${IF_VEN:-?} neřídí systemd-networkd — NetworkManager nechávám být"
+  info  "Stanice neodpovídá tomu, s čím počítá cvičení 3/01. Ověř: networkctl"
+else
+  ok "Síť řídí systemd-networkd (rozhraní $IF_VEN)"
+  if systemctl is-active --quiet NetworkManager || systemctl is-enabled --quiet NetworkManager 2>/dev/null; then
+    sudo systemctl disable --now NetworkManager >/dev/null 2>&1
+    sudo systemctl disable NetworkManager-wait-online >/dev/null 2>&1
+    systemctl is-active --quiet NetworkManager \
+      && varuj "NetworkManager se vypnout nepodařilo" \
+      || ok "NetworkManager vypnut — síť má na starosti jen networkd"
+  fi
+  if dpkg -s network-manager-gnome >/dev/null 2>&1; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq network-manager-gnome >/dev/null 2>&1 \
+      && ok "Ikona NetworkManageru odebrána — hlásila „nepřipojeno\", i když síť běží"
+  fi
+fi
+
 # ------------------------------------------------------------ vzhled
 krok "Vzhled stanice eduxo"
 # Pozadí, motiv, domovská stránka Firefoxu a přihlašovací obrazovka.

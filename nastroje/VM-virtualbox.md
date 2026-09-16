@@ -67,7 +67,8 @@ někdo tvrdil opak, mýlí se.
 | Disk | **100 GB, VDI, dynamicky alokovaný** | viz níže |
 | Grafika | VMSVGA, **128 MB** videopaměti | MATE s 16 MB nenaběhne pořádně |
 | 3D akcelerace | **vypnutá** | s MATE dělá artefakty, k ničemu tu není |
-| Síť | **NAT** | vše se děje uvnitř VM; nezatěžuje školní síť třiceti adresami |
+| Síť — Adaptér 1 | **NAT** | vše se děje uvnitř VM; nezatěžuje školní síť třiceti adresami |
+| Síť — Adaptér 2 | **Vnitřní síť** | pro cvičení 3/01: druhá síťovka bez adresy, na kterou žák nastaví statickou adresu. Bez DHCP, takže zůstane volná |
 | Adresa VM | `10.0.2.15/24` z DHCP | tu dává NAT engine VirtualBoxu, je stejná na všech stanicích a je to v pořádku |
 | Paravirtualizace | KVM | |
 
@@ -195,10 +196,10 @@ Na každé stanici pak import:
 VBoxManage import os-lab-sablona.ova --vsys 0 --vmname "os-lab"
 ```
 
-> **MAC adresy** řešit nemusíš, dokud zůstaneš u NATu — každá VM má vlastní
-> NAT engine a na sdílené L2 se nikdy nepotkají. Kdybys někdy přepnul na
-> Bridged, pak ano: v dialogu importu zvol „Generovat nové MAC adresy pro
-> všechny síťové karty".
+> **MAC adresy** řešit nemusíš, ani při importu s volbou „generovat nové MAC
+> adresy". Instalátor Ubuntu zapisuje síťovku podle MAC adresy a po takovém
+> importu by se nenašla — `priprava-stanice.sh` ji proto přepíše na jméno
+> rozhraní (`enp0s3`).
 
 **Hned po importu udělej snapshot `cista-sablona`.** Je to jediná záchrana,
 když si žák VM rozbije — a u VM, která má vydržet celý rok, se to stane.
@@ -233,6 +234,10 @@ Až ho projdeš, oprav tady, co nesedělo:
    přidává hlídač `/usr/local/bin/eduxo-obrazovka`, který ji použije. **Po
    přechodu školy na VirtualBox 7.2.6** vyzkoušej, jestli to funguje i bez
    něj — hlídač pak nemá co dělat a klidně může zůstat.
+1c. **Síť na šabloně s druhou síťovkou** — `networkctl` musí u `enp0s3`
+   hlásit `configured` a u druhé síťovky (`enp0s8`) `unmanaged` bez adresy.
+   A doslovný výstup `sudo netplan get` po úpravě skriptem: zadání 3/01
+   ukazuje v Kroku 1 ukázku, u které pořadí řádků není ověřené.
 2. **Jestli je modul `vboxguest` v jádře** (`modinfo vboxguest`). Skript to
    kontroluje a poradí `linux-modules-extra`, ale nevyzkoušeno to je.
 3. **Kolik po stavbě zabírá soubor VDI** — a jestli se to vejde do žákovského
