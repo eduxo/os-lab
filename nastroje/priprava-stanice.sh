@@ -173,6 +173,46 @@ else
   fi
 fi
 
+# ------------------------------------------------------------ klávesnice
+krok "Klávesnice — česká, druhá anglická"
+# Ve třídě jsou české klávesnice, výchozí rozložení je proto české — sedí
+# s popisky kláves. Anglické (US) je druhé: ajťák na něj narazí u konzolí
+# serverů. Přepíná se Alt+Shift jako ve Windows. Nastaví se BEZ OHLEDU na to,
+# co se zvolilo v instalátoru, a platí pro plochu, přihlašovací obrazovku
+# i textovou konzoli (nouzový režim) — ty všechny čtou /etc/default/keyboard.
+KBD=/etc/default/keyboard
+if grep -qx 'XKBLAYOUT="cz,us"' "$KBD" 2>/dev/null \
+   && grep -qx 'XKBOPTIONS="grp:alt_shift_toggle"' "$KBD" 2>/dev/null; then
+  ok "Klávesnice už je česká s anglickou jako druhou"
+else
+  printf '%s\n' \
+    '# Klávesnice stanice — zapsal priprava-stanice.sh (eduxo).' \
+    '# Výchozí česká, druhá anglická (US), přepínání Alt+Shift.' \
+    'XKBMODEL="pc105"' \
+    'XKBLAYOUT="cz,us"' \
+    'XKBVARIANT=","' \
+    'XKBOPTIONS="grp:alt_shift_toggle"' \
+    'BACKSPACE="guess"' | sudo tee "$KBD" >/dev/null
+  # textová konzole hned, plocha a přihlašovací obrazovka po restartu
+  sudo setupcon --force --save >/dev/null 2>&1
+  sudo udevadm trigger --subsystem-match=input --action=change >/dev/null 2>&1
+  grep -qx 'XKBLAYOUT="cz,us"' "$KBD" \
+    && ok "Klávesnice: česká výchozí, anglická (US) druhá, přepínání Alt+Shift (plně po restartu)" \
+    || chyba "Nastavení klávesnice se nepodařilo zapsat"
+fi
+# MATE bere rozložení ze systému, dokud ho uživatel nemá uložené v profilu.
+# Kdyby si ho sysadmin při stavbě uložil bez češtiny (třeba jen US), plocha
+# by systémové nastavení nepřevzala. Rozložení, které češtinu obsahuje,
+# zůstane — to si mohl nastavit žák sám.
+if command -v gsettings >/dev/null 2>&1 && command -v dbus-run-session >/dev/null 2>&1; then
+  ULOZENE="$(dbus-run-session -- gsettings get org.mate.peripherals-keyboard-xkb.kbd layouts 2>/dev/null)"
+  case "$ULOZENE" in
+    ''|'@as []'|*"'cz'"*) ;;
+    *) dbus-run-session -- gsettings set org.mate.peripherals-keyboard-xkb.kbd layouts "['cz', 'us']" >/dev/null 2>&1 \
+         && ok "Rozložení v profilu MATE srovnáno (bylo $ULOZENE)" ;;
+  esac
+fi
+
 # ------------------------------------------------------------ síť stanice
 krok "Síť stanice"
 # Stanice je Ubuntu Server a síť na ní řídí systemd-networkd — tak s ní počítá
