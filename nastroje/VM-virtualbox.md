@@ -99,7 +99,7 @@ Volby v instalátoru:
 | Krok | Nastav |
 |---|---|
 | Jazyk instalátoru | English |
-| Rozložení klávesnice | **English (US)** — viz poznámka |
+| Rozložení klávesnice | cokoli — skript nastaví češtinu + US, viz poznámka |
 | Typ instalace | Ubuntu Server (ne minimized) |
 | Síť | nechat na DHCP |
 | Proxy, zrcadlo | nechat prázdné / výchozí |
@@ -120,11 +120,10 @@ Volby v instalátoru:
 > `sysadmin@web-07`) a přesně tohle má 3. ročník žáky učit sledovat —
 > každý krok zadání říká, na kterém stroji se provádí.
 
-> **Klávesnice:** volím US, protože se celý rok píše v terminálu a znaky
-> `/ \ | ~ { }` jsou na české klávesnici přes `AltGr` nebo vůbec. Žáci za to
-> zaplatí prohozeným `y`/`z`. Když to rozhodneš jinak, přepni v MATE
-> (Systém → Předvolby → Klávesnice → Rozložení) a v tomhle souboru to oprav —
-> jinak se to rozejde s tím, co uvidí ve třídě.
+> **Klávesnici ani jazyk v instalátoru neřeš.** Skript nastaví klávesnici
+> na **českou jako výchozí a anglickou (US) jako druhou** (přepínání Alt+Shift)
+> a jazyk na **angličtinu s britským formátem data a času** (24 hodin) — bez
+> ohledu na to, co se v instalátoru zvolilo.
 
 Po instalaci **nezapomeň odpojit ISO** (Zařízení → Optické mechaniky →
 Odstranit disk z jednotky), jinak se VM bude pořád bootovat z instalátoru.

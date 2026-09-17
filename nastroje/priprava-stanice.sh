@@ -213,6 +213,29 @@ if command -v gsettings >/dev/null 2>&1 && command -v dbus-run-session >/dev/nul
   esac
 fi
 
+# ------------------------------------------------------------ jazyk a čas
+krok "Jazyk a formát času"
+# Hlášky, menu i složky anglicky — dají se dohledat na fórech a mluví stejně
+# jako servery v kontejnerech. Datum a čas BRITSKY: 24 hodin, den před
+# měsícem, anglické názvy měsíců, takže `ls -l` vypadá jako na serverech.
+# Rozhodnutí autora. Hodiny v panelu (indikátor Ayatana) poznají 12/24 h
+# podle LC_TIME (nl_langinfo(T_FMT)): en_US dává „1:14 PM", en_GB 24 h.
+LOC=/etc/default/locale
+if locale -a 2>/dev/null | grep -qix 'en_us.utf8' && locale -a 2>/dev/null | grep -qix 'en_gb.utf8' \
+   && grep -qE '^LANG="?en_US.UTF-8"?$' "$LOC" 2>/dev/null \
+   && grep -qE '^LC_TIME="?en_GB.UTF-8"?$' "$LOC" 2>/dev/null; then
+  ok "Jazyk už je anglický s britským formátem času"
+else
+  sudo locale-gen en_US.UTF-8 en_GB.UTF-8 >/dev/null 2>&1
+  sudo update-locale LANG=en_US.UTF-8 LC_TIME=en_GB.UTF-8 >/dev/null 2>&1
+  if locale -a 2>/dev/null | grep -qix 'en_gb.utf8' \
+     && grep -qE '^LC_TIME="?en_GB.UTF-8"?$' "$LOC" 2>/dev/null; then
+    ok "Jazyk: angličtina, datum a čas britsky — 24 hodin (projeví se po přihlášení)"
+  else
+    chyba "Jazyk a formát času se nepodařilo nastavit"
+  fi
+fi
+
 # ------------------------------------------------------------ síť stanice
 krok "Síť stanice"
 # Stanice je Ubuntu Server a síť na ní řídí systemd-networkd — tak s ní počítá
