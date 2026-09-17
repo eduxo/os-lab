@@ -578,6 +578,16 @@ if [ "$HV" != "none" ]; then
   fi
   # Uložený záznam o pádu by jinak hlášku ukázal po prvním přihlášení znovu
   sudo rm -f /var/crash/_usr_bin_blueman-applet.*
+  # fwupd-refresh.timer stahuje seznam aktualizací FIRMWARU (BIOS, disky).
+  # Ve VM není co aktualizovat; ze školní sítě se k serveru navíc nedostal,
+  # fwupdmgr spadl a Ubuntu pak žákovi ukázalo „System program problem
+  # detected". Časovač se vypne a zamaskuje, aby ho nezapnula aktualizace.
+  if systemctl list-unit-files fwupd-refresh.timer >/dev/null 2>&1 \
+     && [ "$(systemctl is-enabled fwupd-refresh.timer 2>/dev/null)" != "masked" ]; then
+    sudo systemctl disable --now fwupd-refresh.timer >/dev/null 2>&1
+    sudo systemctl mask fwupd-refresh.timer >/dev/null 2>&1 \
+      && ok "Stahování aktualizací firmwaru (fwupd-refresh) vypnuto — ve VM jen padalo"
+  fi
 fi
 
 # ------------------------------------------------------------ LXD
@@ -723,6 +733,16 @@ if sudo passwd -S root 2>/dev/null | grep -qE ' (L|NP) '; then
   fi
 else
   ok "Účet root má heslo — emergency shell bude přístupný"
+fi
+
+# ------------------------------------------------------------ záznamy o pádech
+# Když během stavby cokoli spadne, Apport uloží záznam do /var/crash a hlášku
+# „…has experienced an internal error" pak po přihlášení ukáže každému, kdo
+# stanici dostane — i když program už nikdy znovu nespadne. Záznamy z přípravy
+# proto pryč; příčiny známých pádů řeší kroky výše.
+if ls /var/crash/*.crash >/dev/null 2>&1; then
+  sudo rm -f /var/crash/*.crash /var/crash/*.upload /var/crash/*.uploaded
+  ok "Záznamy o pádech z přípravy smazány — žák je po přihlášení neuvidí"
 fi
 
 # ------------------------------------------------------------ souhrn
