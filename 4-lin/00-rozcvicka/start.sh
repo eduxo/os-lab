@@ -16,11 +16,14 @@ PODKLADY="$ROZ/podklady"
 FORMULAR="$ROZ/odpovedi.txt"
 
 # ── losované hodnoty: soused má jiné odpovědi ─────────────────────────
-OKTET=$(( 20 + $(lab_vyber 60 1 400) ))          # 10.40.OKTET.0/24
-PORT_WEB=$(( 8000 + $(lab_vyber 900 1 401) ))    # port v compose
-INTERVAL=$(( 5 + $(lab_vyber 20 1 402) ))        # OnUnitActiveSec v timeru
-CHYB=$(( 4 + $(lab_vyber 7 1 403) ))             # kolik řádků ERROR je v logu
-PORTU=$(( 3 + $(lab_vyber 4 1 404) ))            # kolik portů pouští firewall
+# lab_cislo, ne lab_vyber: na jedno číslo stačí jeden otisk. `lab_vyber 900`
+# trvá přes čtyři sekundy a platilo by se to při každém spuštění kontroly.
+OKTET="$(lab_cislo 20 79 400)"                   # 10.40.OKTET.0/24
+PORT_WEB="$(lab_cislo 8000 8899 401)"            # port v compose
+INTERVAL="$(lab_cislo 5 24 402)"                 # OnUnitActiveSec v timeru
+CHYB="$(lab_cislo 4 9 403)"                      # kolik řádků ERROR je v logu
+PORTU="$(lab_cislo 3 6 404)"                     # kolik pravidel má firewall
+WEB_VEN="$(lab_cislo 0 1 406)"                   # pouští firewall port 80 ven?
 KOD="$(lab_kod PRJ 405)"                         # kód zakázky do projektu
 
 vyrob_podklady() {
@@ -81,13 +84,22 @@ TIMER
 
   # Výpis firewallu: PORTU povolených portů (22 je vždycky mezi nimi).
   {
+    # Pravidel je přesně PORTU. První je vždycky SSH; jestli je mezi nimi
+    # i web ven, rozhoduje samostatný los — jinak by odpověď „ano" platila
+    # pro celou třídu a otázka by nic nerozlišovala.
     printf 'Status: active\n\nTo                         Action      From\n--                         ------      ----\n'
     printf '22/tcp                     ALLOW       10.40.%s.0/24\n' "$OKTET"
-    [ "$PORTU" -ge 2 ] && printf '80/tcp                     ALLOW       Anywhere\n'
-    [ "$PORTU" -ge 3 ] && printf '443/tcp                    ALLOW       Anywhere\n'
-    [ "$PORTU" -ge 4 ] && printf '53                         ALLOW       10.40.%s.0/24\n' "$OKTET"
-    [ "$PORTU" -ge 5 ] && printf '3260/tcp                   ALLOW       10.40.%s.0/24\n' "$OKTET"
-    [ "$PORTU" -ge 6 ] && printf '9100/tcp                   ALLOW       10.40.%s.10\n' "$OKTET"
+    local zbyva=$(( PORTU - 1 ))
+    if [ "$WEB_VEN" = "1" ] && [ "$zbyva" -gt 0 ]; then
+      printf '80/tcp                     ALLOW       Anywhere\n'; zbyva=$(( zbyva - 1 ))
+    fi
+    [ "$zbyva" -gt 0 ] && { printf '443/tcp                    ALLOW       10.40.%s.0/24\n' "$OKTET"; zbyva=$(( zbyva - 1 )); }
+    [ "$zbyva" -gt 0 ] && { printf '53                         ALLOW       10.40.%s.0/24\n' "$OKTET"; zbyva=$(( zbyva - 1 )); }
+    [ "$zbyva" -gt 0 ] && { printf '3260/tcp                   ALLOW       10.40.%s.0/24\n' "$OKTET"; zbyva=$(( zbyva - 1 )); }
+    [ "$zbyva" -gt 0 ] && { printf '9100/tcp                   ALLOW       10.40.%s.10\n' "$OKTET"; zbyva=$(( zbyva - 1 )); }
+    # Šesté pravidlo v záloze: bez něj by při vylosovaném „web ven ne"
+    # a šesti pravidlech nebylo z čeho brát a soubor by měl jen pět.
+    [ "$zbyva" -gt 0 ] && { printf '5432/tcp                   ALLOW       10.40.%s.20\n' "$OKTET"; zbyva=$(( zbyva - 1 )); }
   } > "$PODKLADY/firewall.txt"
 
   cat > "$PODKLADY/compose.yaml" <<COMPOSE
@@ -161,7 +173,14 @@ zaloz_projekt() {
     return 0                       # už existuje — nikdy znovu
   fi
   # Pojistka: na projektový disk se smí psát jen tady, a jen když je prázdný.
-  if [ -n "$(lsblk -rno NAME "/dev/$disk" 2>/dev/null | tail -n +2)" ]; then
+  # Selhání lsblk se nesmí tvářit jako prázdný disk — proto se ptáme na
+  # návratový kód, ne jen na prázdný výstup.
+  local vypis
+  if ! vypis="$(lsblk -rno NAME "/dev/$disk" 2>/dev/null)"; then
+    echo; echo "  Disk /dev/$disk se nepodařilo přečíst — nechávám ho být."; echo
+    return 1
+  fi
+  if [ -n "$(printf '%s\n' "$vypis" | tail -n +2)" ]; then
     echo
     echo "  Na disku /dev/$disk už něco je, ale není to projekt. Nechávám ho být."
     echo "  Řekněte o tom vyučujícímu."
@@ -172,7 +191,8 @@ zaloz_projekt() {
   sudo sgdisk --zap-all "/dev/$disk" >/dev/null 2>&1
   sudo sgdisk --new=1:0:0 --typecode=1:8300 --change-name=1:projekt "/dev/$disk" >/dev/null 2>&1 \
     || { echo "  Oddíl se nepodařilo vytvořit — řekněte o tom vyučujícímu."; return 1; }
-  sudo partprobe "/dev/$disk" >/dev/null 2>&1; sleep 1
+  sudo partprobe "/dev/$disk" >/dev/null 2>&1
+  sudo udevadm settle >/dev/null 2>&1 || sleep 1
   cast="$(lsblk -rno NAME "/dev/$disk" | tail -n +2 | head -1)"
   [ -n "$cast" ] || { echo "  Oddíl nevznikl — řekněte o tom vyučujícímu."; return 1; }
   sudo mkfs.ext4 -q -L "$PROJEKT_NAZEV" "/dev/$cast" >/dev/null 2>&1 \
@@ -193,8 +213,10 @@ DOPLNENO=""
 [ -d "$PODKLADY" ] || { vyrob_podklady; DOPLNENO="$DOPLNENO podklady"; }
 [ -s "$FORMULAR" ] || { vyrob_formular;  DOPLNENO="$DOPLNENO formulář"; }
 
-zkontroluj_disky 1 >/dev/null 2>&1 || true      # hlášku vypíše až zaloz_projekt
-if zaloz_projekt && projekt_pripoj >/dev/null 2>&1; then
+# Na disky se sahá JEN tehdy, když pojistka řekne, že je prostředí v pořádku.
+# Zahodit její verdikt (|| true) by znamenalo psát na disk, o kterém knihovna
+# sama říká, že ho neumí rozpoznat.
+if zkontroluj_disky 1 && zaloz_projekt && projekt_pripoj >/dev/null 2>&1; then
   # Až TEĎ se smí zakládat obsah: kdyby se disk nepřipojil, vznikly by
   # adresáře v domovském adresáři a žák by si myslel, že projekt má.
   mkdir -p "$PROJEKT_PRIPOJ/dokumentace" 2>/dev/null

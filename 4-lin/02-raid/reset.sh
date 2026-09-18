@@ -5,7 +5,7 @@ source "$(dirname "$0")/../../lib/lab-lib.sh"
 source "$(dirname "$0")/../../lib/disk-lib.sh"
 LAB="$HOME/netlab/raid"
 zkontroluj_disky 3 || exit 1
-DISK_A="${LABOVE_DISKY[1]}"; DISK_B="${LABOVE_DISKY[2]}"
+DISK_A="$(labovy_disk 2)"; DISK_B="$(labovy_disk 3)"
 echo
 echo "  Tím rozeberete pole a smažete všechno na /dev/$DISK_A a /dev/$DISK_B."
 echo "  Prvního labového disku, projektu ani systému se to nedotkne."

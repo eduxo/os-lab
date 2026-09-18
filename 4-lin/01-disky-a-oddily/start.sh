@@ -29,7 +29,11 @@ VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))     # MiB prvního oddílu: 450�
 KONEC=$(( VELIKOST + 1 ))                           # oddíl začíná na 1MiB
 
 zkontroluj_disky 1 || exit 1
-DISK="${LABOVE_DISKY[0]}"
+# Ne LABOVE_DISKY[0]: pořadí jmen sd* přiděluje jádro a po přidání disku
+# nebo po restartu se může posunout. `labovy_disk` si přiřazení jednou uloží
+# podle /dev/disk/by-id, což je jméno vázané na zařízení, ne na pořadí.
+DISK="$(labovy_disk 1)"
+[ -n "$DISK" ] || { echo "  Labový disk se nepodařilo určit."; exit 1; }
 
 mkdir -p "$LAB" "$PRIPOJ"
 

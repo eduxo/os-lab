@@ -109,6 +109,15 @@ export ZAK2 ZAK_UZIVATEL ZAK_IP ZAK_PORT
 
 # Kód odvozený z čísla žáka. Používá start.sh i check.sh — musí být na jednom
 # místě, jinak se při změně vzorce rozejdou.
+lab_cislo() {  # lab_cislo MIN MAX [sůl] → číslo z intervalu <MIN,MAX>
+  # Na vylosování JEDNOHO čísla stačí jeden otisk. `lab_vyber N` míchá
+  # celé pole Fisher–Yatesem a volá sha256sum N-krát — u N=900 to trvá
+  # sekundy a platí se při každém spuštění kontroly. Tohle je konstantní.
+  local min="$1" max="$2" sul="${3:-0}" h
+  h="$(printf 'cislo-%s-%s' "$ZAK" "$sul" | _hash | cut -c1-8)"
+  printf '%s\n' "$(( min + (16#$h) % (max - min + 1) ))"
+}
+
 lab_kod() {  # lab_kod PREFIX [sůl]
   # Sůl odlišuje kódy různých cvičení. Bez ní by měl žák ve všech cvičeních
   # tytéž čtyři číslice a druhý kód by uhodl, aniž by ho hledal.

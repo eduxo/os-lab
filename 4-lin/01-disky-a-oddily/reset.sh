@@ -6,7 +6,8 @@ source "$(dirname "$0")/../../lib/lab-lib.sh"
 source "$(dirname "$0")/../../lib/disk-lib.sh"
 LAB="$HOME/netlab/disky"
 zkontroluj_disky 1 || exit 1
-DISK="${LABOVE_DISKY[0]}"
+DISK="$(labovy_disk 1)"
+[ -n "$DISK" ] || { echo "  Labový disk se nepodařilo určit."; exit 1; }
 echo
 echo "  Tím smažete VŠECHNO na /dev/$DISK — oddíly, souborový systém i data."
 echo "  Ročníkového projektu ani systému se to nedotkne."

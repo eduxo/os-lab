@@ -20,8 +20,8 @@ PRIPOJ="$LAB/data"
 NAZEV="RAID-$ZAK2"
 
 zkontroluj_disky 3 || exit 1
-DISK_A="${LABOVE_DISKY[1]}"
-DISK_B="${LABOVE_DISKY[2]}"
+DISK_A="$(labovy_disk 2)"; DISK_B="$(labovy_disk 3)"
+[ -n "$DISK_A" ] && [ -n "$DISK_B" ] || { echo "  Labové disky se nepodařilo určit."; exit 1; }
 
 mkdir -p "$LAB" "$PRIPOJ"
 if [ ! -s "$FORMULAR" ]; then
@@ -77,7 +77,7 @@ cat <<EOF
     Kam připojovat:   $PRIPOJ
     Návěští:          $NAZEV
 
-  Na první labový disk (/dev/${LABOVE_DISKY[0]}) dnes nesaháte — je na něm
+  Na první labový disk (/dev/$(labovy_disk 1)) dnes nesaháte — je na něm
   práce z minulé hodiny.
 
   Průběžná kontrola:

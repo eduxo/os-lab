@@ -10,8 +10,8 @@ PRIPOJ="$LAB/data"
 NAZEV="RAID-$ZAK2"
 
 zkontroluj_disky 3 || exit 1
-DISK_A="${LABOVE_DISKY[1]}"
-DISK_B="${LABOVE_DISKY[2]}"
+DISK_A="$(labovy_disk 2)"; DISK_B="$(labovy_disk 3)"
+[ -n "$DISK_A" ] && [ -n "$DISK_B" ] || { echo "  Labové disky se nepodařilo určit."; exit 1; }
 
 # `mdadm --detail` chce práva správce. Čte se líně a jen jednou.
 _det=""; _det_nactena=0
@@ -23,14 +23,10 @@ detail() {
   fi
   printf '%s' "$_det"
 }
-# Pole se hledá podle toho, že jsou v něm OBA žákovy disky — ne podle jména.
-POLE=""
-while read -r radek; do
-  case " $radek " in
-    *" ${DISK_A}["*|*" ${DISK_A} "*)
-      case " $radek " in *" ${DISK_B}["*|*" ${DISK_B} "*) POLE="${radek%% *}" ;; esac ;;
-  esac
-done < <(grep -E '^md[0-9]+ :' /proc/mdstat 2>/dev/null)
+# Pole se hledá podle ČLENSTVÍ obou disků (společná funkce z disk-lib) —
+# ne podle jména: jádro pole po restartu přejmenuje. Funkce pozná pole
+# složené z celých disků i z oddílů.
+POLE="$(pole_s_diskem "$DISK_A" "$DISK_B" || true)"
 
 krok 1 "Pole existuje"
 require_soubor_neprazdny "$FORMULAR" \
@@ -42,8 +38,13 @@ else
   chyba "nenašel jsem pole, ve kterém jsou oba vaše disky"
   poznamka "co pole vidí, ukáže: cat /proc/mdstat"
 fi
-require_zaznam "$FORMULAR" zarizeni "${POLE:-nic}" \
-  "ve formuláři je jméno pole"
+# Když pole nestojí, nesmí se porovnávat s literálem „nic" — žák, který
+# do formuláře napíše „nic", by dostal PASS.
+if [ -n "$POLE" ]; then
+  require_zaznam "$FORMULAR" zarizeni "$POLE" "ve formuláři je jméno pole"
+else
+  chyba "jméno pole nelze ověřit, dokud pole nestojí"
+fi
 
 krok 2 "Úroveň a stav"
 UROVEN="$(printf '%s' "$(detail)" | awk -F': *' '/Raid Level/{print $2; exit}' | tr -d ' ')"
@@ -60,7 +61,9 @@ else
   chyba "pole má ${CLENU:-?} členů, aktivních ${AKTIVNI:-?} — mají být dva a dva"
 fi
 # Dokud se zrcadlo dosynchronizovává, pole funguje, ale ještě nechrání.
-if grep -qE 'resync|recovery' /proc/mdstat 2>/dev/null; then
+# Ptáme se na ŽÁKOVO pole, ne na celý soubor — cizí synchronizace
+# (třeba z jiného labu) by jinak shodila tuhle kontrolu.
+if [ -n "$POLE" ] && awk -v p="$POLE" '$1==p{f=1} f&&/resync|recovery/{found=1} f&&/^$/{f=0} END{exit !found}' /proc/mdstat 2>/dev/null; then
   chyba "pole se ještě synchronizuje — počkejte, než doběhne"
   poznamka "průběh ukáže: cat /proc/mdstat"
 else

@@ -11,11 +11,12 @@ PODKLADY="$ROZ/podklady"
 FORMULAR="$ROZ/odpovedi.txt"
 
 # Losované hodnoty musí sedět se start.sh — proto tytéž soli.
-OKTET=$(( 20 + $(lab_vyber 60 1 400) ))
-PORT_WEB=$(( 8000 + $(lab_vyber 900 1 401) ))
-INTERVAL=$(( 5 + $(lab_vyber 20 1 402) ))
-CHYB=$(( 4 + $(lab_vyber 7 1 403) ))
-PORTU=$(( 3 + $(lab_vyber 4 1 404) ))
+OKTET="$(lab_cislo 20 79 400)"
+PORT_WEB="$(lab_cislo 8000 8899 401)"
+INTERVAL="$(lab_cislo 5 24 402)"
+CHYB="$(lab_cislo 4 9 403)"
+PORTU="$(lab_cislo 3 6 404)"
+WEB_VEN="$(lab_cislo 0 1 406)"
 
 TEMATA=(); VYSLEDKY=(); ODKAZY=(); NEVYPLNENO=()
 _pred=0
@@ -75,7 +76,7 @@ require_zaznam "$FORMULAR" pravidel "$PORTU" \
   "pravidel: kolik pravidel firewall vypisuje"
 require_zaznam "$FORMULAR" ssh-odkud "10.40.$OKTET.0/24" \
   "ssh-odkud: z jakého rozsahu smí přijít SSH"
-if [ "$PORTU" -ge 2 ]; then OCEK_WEB=ano; else OCEK_WEB=ne; fi
+if [ "$WEB_VEN" = "1" ] && [ "$PORTU" -ge 2 ]; then OCEK_WEB=ano; else OCEK_WEB=ne; fi
 require_zaznam "$FORMULAR" web "$OCEK_WEB" \
   "web: pustí firewall port 80 odkudkoli?"
 tema_konec "firewall" 3 "3/13 Firewall" pravidel ssh-odkud web

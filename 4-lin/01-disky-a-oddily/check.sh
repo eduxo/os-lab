@@ -12,13 +12,14 @@ VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))   # MiB, stejně jako start.sh
 PREVZETI="$PRIPOJ/prevzeti.txt"
 
 zkontroluj_disky 1 || exit 1
-DISK="${LABOVE_DISKY[0]}"
+DISK="$(labovy_disk 1)"
+[ -n "$DISK" ] || { echo "  Labový disk se nepodařilo určit."; exit 1; }
 CAST1="$(lsblk -rno NAME "/dev/$DISK" 2>/dev/null | tail -n +2 | head -1)"
 
 krok 1 "Co na stanici je"
 # Nejdřív pojistka: cvičení se dělá na labovém disku a projektový disk musí
 # zůstat nedotčený. Kdyby si ho žák spletl, je lepší to říct hned — a nahlas.
-if [ -n "$(blkid -L "PROJEKT-$ZAK2" 2>/dev/null)" ]; then
+if [ -n "$(blkid -L "$PROJEKT_NAZEV" 2>/dev/null)" ]; then
   uspech "disk ročníkového projektu je v pořádku"
 else
   chyba "disk ročníkového projektu nenajdu — nepracovali jste omylem na něm?"
@@ -41,11 +42,12 @@ esac
 POCET="$(lsblk -rno NAME "/dev/$DISK" 2>/dev/null | tail -n +2 | grep -c '')"
 [ "$POCET" = "2" ] \
   && uspech "na disku jsou dva oddíly" \
-  || chyba "na disku jsou $POCET oddíly, mají být dva"
+  || chyba "na disku je oddílů: $POCET, mají být dva"
 # Měří se v MiB — v týchž jednotkách, ve kterých se oddíl zadává v parted.
 # Tolerance je na zarovnání, ne na převod jednotek.
 if [ -n "$CAST1" ]; then
-  MIB=$(( $(lsblk -brno SIZE "/dev/$CAST1" 2>/dev/null || echo 0) / 1048576 ))
+  BAJTU="$(lsblk -brno SIZE "/dev/$CAST1" 2>/dev/null | head -1)"
+  MIB=$(( ${BAJTU:-0} / 1048576 ))
   ROZDIL=$(( MIB - VELIKOST )); [ "$ROZDIL" -lt 0 ] && ROZDIL=$(( -ROZDIL ))
   if [ "$ROZDIL" -le 5 ]; then
     uspech "první oddíl má zadanou velikost (${MIB} MiB)"
@@ -63,8 +65,9 @@ require_zaznam "$FORMULAR" oddilu "2" \
 
 krok 3 "Souborový systém"
 if [ -n "$CAST1" ]; then
-  FS="$(lsblk -no FSTYPE "/dev/$CAST1" 2>/dev/null | tr -d ' ')"
-  LBL="$(lsblk -no LABEL "/dev/$CAST1" 2>/dev/null | sed 's/ *$//')"
+  # head -1: u zařízení s potomky vrací lsblk víc řádků.
+  FS="$(lsblk -no FSTYPE "/dev/$CAST1" 2>/dev/null | tr -d ' ' | head -1)"
+  LBL="$(lsblk -no LABEL "/dev/$CAST1" 2>/dev/null | sed 's/ *$//' | head -1)"
   [ "$FS" = "ext4" ] \
     && uspech "na prvním oddílu je souborový systém ext4" \
     || chyba "na prvním oddílu je '${FS:-nic}', zadání chce ext4"
@@ -88,8 +91,12 @@ else
 fi
 # Doklad o vlastním běhu: UUID se nedá vymyslet ani opsat od souseda,
 # protože vzniklo při formátování právě na téhle stanici.
-UUID="$(lsblk -no UUID "/dev/${CAST1:-nic}" 2>/dev/null | tr -d ' ')"
-if [ -z "$UUID" ]; then
+UUID="$(lsblk -no UUID "/dev/${CAST1:-nic}" 2>/dev/null | tr -d ' ' | head -1)"
+# Doklad se hledá NA disku — bez tohohle by prošel i soubor ležící
+# v prázdném přípojném adresáři na systémovém disku.
+if [ "$(findmnt -no SOURCE "$PRIPOJ" 2>/dev/null | head -1)" != "/dev/${CAST1:-nic}" ]; then
+  chyba "v $PRIPOJ není připojený váš oddíl — doklad nemá kde ležet"
+elif [ -z "$UUID" ]; then
   chyba "souborový systém zatím nemá UUID — není ještě vytvořený"
 elif [ ! -s "$PREVZETI" ]; then
   chyba "na připojeném disku chybí prevzeti.txt"
