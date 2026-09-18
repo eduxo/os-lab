@@ -12,11 +12,21 @@ set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 source "$(dirname "$0")/../../lib/disk-lib.sh"
 
+# Projekt musí být připojený v KAŽDÉ hodině, ne jen v té, ve které vznikl.
+# Trvalý zápis do fstab je učivo cvičení 4/06; do té doby ho připojuje
+# prostředí. Bez toho by ~/projekt byl po restartu prázdný adresář na
+# systémovém disku a žák by do něj ukládal maturitní práci naslepo.
+projekt_pripoj >/dev/null 2>&1 || true
+
 LAB="$HOME/netlab/disky"
 FORMULAR="$LAB/rozvrzeni.txt"
 NAZEV="DATA-$ZAK2"                                  # návěští souborového systému
 PRIPOJ="$HOME/netlab/disky/data"
-VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))     # MB prvního oddílu: 450–850
+# Velikost je v MiB, ne v MB. Důvod: parted se zadává v MiB, oddíl pak sedne
+# na hranici zarovnání (jinak varuje) a kontrola měří v týchž jednotkách.
+# Porovnávat MiB s MB znamená 4,6 % rozdíl — tolerance 20 by neprošla nikdy.
+VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))     # MiB prvního oddílu: 450–850
+KONEC=$(( VELIKOST + 1 ))                           # oddíl začíná na 1MiB
 
 zkontroluj_disky 1 || exit 1
 DISK="${LABOVE_DISKY[0]}"
@@ -76,7 +86,8 @@ cat <<EOF
     Formulář:         $FORMULAR
     Kam připojovat:   $PRIPOJ
 
-    První oddíl má mít velikost:  $VELIKOST MB
+    První oddíl má mít velikost:  $VELIKOST MiB
+    (v příkazu parted tedy:        1MiB  až  ${KONEC}MiB)
     Návěští souborového systému:  $NAZEV
 
 EOF

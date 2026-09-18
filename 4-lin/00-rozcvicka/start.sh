@@ -43,18 +43,18 @@ YAML
 
   cat > "$PODKLADY/sklizen.service" <<UNIT
 [Unit]
-Description=Sklizen dat z pobockovych cidel
+Description=Pravidelna sklizen dat z pobockovych cidel
 After=network-online.target
 
 [Service]
 Type=oneshot
 ExecStart=/opt/sklizen/sklizen.sh
-User=sklizen
+User=cidla
 UNIT
 
   cat > "$PODKLADY/sklizen.timer" <<TIMER
 [Unit]
-Description=Sklizen kazdych $INTERVAL minut
+Description=Casovac pravidelne sklizne
 
 [Timer]
 OnBootSec=2min
@@ -67,15 +67,16 @@ TIMER
 
   # Log: přesně CHYB řádků se slovem ERROR, zbytek šum.
   {
-    printf 'Oct 14 07:59:58 pobocka systemd[1]: Started Sklizen dat z pobockovych cidel.\n'
+    printf 'Sep 07 07:59:58 pobocka systemd[1]: Started Pravidelna sklizen dat z pobockovych cidel.\n'
+    # Časy musí růst: žák má najít POSLEDNÍ řádek a skok zpět by ho zmátl.
     local i=1
     while [ "$i" -le "$CHYB" ]; do
-      printf 'Oct 14 08:0%d:1%d pobocka sklizen.sh[%d]: ERROR cidlo %d neodpovida\n' \
-        $(( i % 10 )) $(( i % 10 )) $(( 700 + i )) "$i"
+      printf 'Sep 07 08:%02d:%02d pobocka sklizen.sh[%d]: ERROR cidlo %d neodpovida\n' \
+        "$i" $(( 10 + i )) $(( 700 + i )) "$i"
       i=$(( i + 1 ))
     done
-    printf 'Oct 14 08:12:03 pobocka sklizen.sh[712]: sklizen hotova, zapsano 48 mereni\n'
-    printf 'Oct 14 08:12:03 pobocka systemd[1]: sklizen.service: Deactivated successfully.\n'
+    printf 'Sep 07 08:12:03 pobocka sklizen.sh[712]: sklizen hotova, zapsano 48 mereni\n'
+    printf 'Sep 07 08:12:03 pobocka systemd[1]: sklizen.service: Deactivated successfully.\n'
   } > "$PODKLADY/sklizen.log"
 
   # Výpis firewallu: PORTU povolených portů (22 je vždycky mezi nimi).

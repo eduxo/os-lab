@@ -113,4 +113,18 @@ else
   chyba "v prevzeti.txt není UUID souborového systému na poli"
 fi
 
+krok 5 "Jméno pole po restartu"
+# Bez záznamu v mdadm.conf jádro pole po restartu pojmenuje podle svého
+# (typicky md127) a žák by příští hodinu pracoval s jiným zařízením, než má
+# v poznámkách. Hledá se UUID pole, ne jméno — to se právě může změnit.
+POLE_UUID="$(printf '%s' "$(detail)" | awk -F': *' '/^ *UUID/{print $2; exit}' | tr -d ' ')"
+if [ -z "$POLE_UUID" ]; then
+  chyba "UUID pole se nepodařilo přečíst — stojí vůbec pole?"
+elif sudo -n grep -qF "$POLE_UUID" /etc/mdadm/mdadm.conf 2>/dev/null \
+     || sudo grep -qF "$POLE_UUID" /etc/mdadm/mdadm.conf 2>/dev/null; then
+  uspech "pole je zapsané v /etc/mdadm/mdadm.conf"
+else
+  chyba "pole není zapsané v /etc/mdadm/mdadm.conf — po restartu se přejmenuje"
+fi
+
 vypis_souhrn

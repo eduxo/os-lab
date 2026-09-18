@@ -52,7 +52,7 @@ krok 2 "systemd"
 tema_start
 require_zaznam "$FORMULAR" interval "$INTERVAL" \
   "interval: jak často se sklizeň opakuje (minuty)"
-require_zaznam "$FORMULAR" ucet "sklizen" \
+require_zaznam "$FORMULAR" ucet "cidla" \
   "ucet: pod kterým účtem služba běží"
 require_zaznam "$FORMULAR" cil "timers.target" \
   "cil: do kterého cíle se timer instaluje"
@@ -125,11 +125,12 @@ if [ -z "$_krok_filtr" ]; then
     STAV="${VYSLEDKY[i]}"; PRAZ="${NEVYPLNENO[i]}"
     if [ "${STAV%%/*}" = "${STAV##*/}" ]; then
       printf "    ${_Z}%-5s %s${_0}\n" "$STAV" "${TEMATA[i]}"
-    elif [ "${PRAZ:-0}" -gt 0 ]; then
-      printf "    %-5s %s  — %s nevyplněno, doplňte a spusťte znovu\n" \
-        "$STAV" "${TEMATA[i]}" "$PRAZ"
     else
-      printf "    ${_M}%-5s %s${_0}  → %s\n" "$STAV" "${TEMATA[i]}" "${ODKAZY[i]}"
+      # Odkaz patří i k okruhu, ke kterému žák vůbec nedošel — právě ten
+      # potřebuje nejvíc vědět, kam se vrátit. Nevyplněno je doplněk,
+      # ne náhrada odkazu.
+      DOPL=""; [ "${PRAZ:-0}" -gt 0 ] && DOPL="  (${PRAZ} nevyplněno)"
+      printf "    ${_M}%-5s %s${_0}  → %s%s\n" "$STAV" "${TEMATA[i]}" "${ODKAZY[i]}" "$DOPL"
     fi
   done
   echo

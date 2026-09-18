@@ -8,7 +8,7 @@ LAB="$HOME/netlab/disky"
 FORMULAR="$LAB/rozvrzeni.txt"
 PRIPOJ="$LAB/data"
 NAZEV="DATA-$ZAK2"
-VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))
+VELIKOST=$(( 400 + 50 * $(lab_vyber 9 1 410) ))   # MiB, stejně jako start.sh
 PREVZETI="$PRIPOJ/prevzeti.txt"
 
 zkontroluj_disky 1 || exit 1
@@ -42,15 +42,15 @@ POCET="$(lsblk -rno NAME "/dev/$DISK" 2>/dev/null | tail -n +2 | grep -c '')"
 [ "$POCET" = "2" ] \
   && uspech "na disku jsou dva oddíly" \
   || chyba "na disku jsou $POCET oddíly, mají být dva"
-# Velikost se porovnává s tolerancí: parted oddíly zarovnává na celé
-# megabajty i mebibajty, takže přesná shoda by padala na zaokrouhlení.
+# Měří se v MiB — v týchž jednotkách, ve kterých se oddíl zadává v parted.
+# Tolerance je na zarovnání, ne na převod jednotek.
 if [ -n "$CAST1" ]; then
-  MB=$(( $(lsblk -brno SIZE "/dev/$CAST1" 2>/dev/null || echo 0) / 1048576 ))
-  ROZDIL=$(( MB - VELIKOST )); [ "$ROZDIL" -lt 0 ] && ROZDIL=$(( -ROZDIL ))
-  if [ "$ROZDIL" -le 20 ]; then
-    uspech "první oddíl má zadanou velikost (${MB} MB)"
+  MIB=$(( $(lsblk -brno SIZE "/dev/$CAST1" 2>/dev/null || echo 0) / 1048576 ))
+  ROZDIL=$(( MIB - VELIKOST )); [ "$ROZDIL" -lt 0 ] && ROZDIL=$(( -ROZDIL ))
+  if [ "$ROZDIL" -le 5 ]; then
+    uspech "první oddíl má zadanou velikost (${MIB} MiB)"
   else
-    chyba "první oddíl má ${MB} MB, zadání chce $VELIKOST MB"
+    chyba "první oddíl má ${MIB} MiB, zadání chce $VELIKOST MiB"
   fi
 else
   chyba "první oddíl na disku zatím není"

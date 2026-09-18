@@ -8,6 +8,12 @@ set -uo pipefail
 source "$(dirname "$0")/../../lib/lab-lib.sh"
 source "$(dirname "$0")/../../lib/disk-lib.sh"
 
+# Projekt musí být připojený v KAŽDÉ hodině, ne jen v té, ve které vznikl.
+# Trvalý zápis do fstab je učivo cvičení 4/06; do té doby ho připojuje
+# prostředí. Bez toho by ~/projekt byl po restartu prázdný adresář na
+# systémovém disku a žák by do něj ukládal maturitní práci naslepo.
+projekt_pripoj >/dev/null 2>&1 || true
+
 LAB="$HOME/netlab/raid"
 FORMULAR="$LAB/pole.txt"
 PRIPOJ="$LAB/data"
