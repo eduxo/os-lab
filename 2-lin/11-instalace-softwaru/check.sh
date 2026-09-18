@@ -7,8 +7,12 @@ SOFT="$HOME/netlab/software"
 PREHLED="$SOFT/prehled.txt"
 ZDROJE="/etc/apt/sources.list.d/ubuntu.sources"
 
-BALICKY=(tree ncdu figlet sl jq htop)
-MUJ="${BALICKY[$(( $(lab_vyber 6 1 111) - 1 ))]}"
+# POZOR: sem NESMÍ balíček, který je v šabloně stanice (nastroje/balicky.txt).
+# `tree` a `htop` tu původně byly — kdo si je vylosoval, dostal od aptu
+# „už je nainstalováno" a instalaci si nezkusil. Nový balíček proto vždy
+# proti balicky.txt prověř.
+BALICKY=(ncdu figlet sl jq)
+MUJ="${BALICKY[$(( $(lab_vyber 4 1 111) - 1 ))]}"
 
 krok 1 "Prostředí"
 require_soubor_neprazdny "$PREHLED" \

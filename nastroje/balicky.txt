@@ -43,6 +43,9 @@ chrony              # čas — bez něj se rozejdou logy i ověřování
 # ── 2. ročník ─────────────────────────────────────────────────────────
 acl                 # 2/17 — rozšířená oprávnění (getfacl, setfacl)
 gnupg               # 2/12 — podpisy a klíče
+keepassxc           # 2/02 — správce hesel. Musí být v šabloně: cvičení je
+                    # druhou hodinu roku, tedy DŘÍV, než se probere příkazová
+                    # řádka (2/03) i instalace softwaru (2/11).
 
 # ── 3. ročník ─────────────────────────────────────────────────────────
 docker.io           # 3/21, 3/21b — kontejnery jako učivo; běží PŘÍMO VE VM,
