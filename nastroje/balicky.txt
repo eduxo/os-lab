@@ -75,6 +75,8 @@ docker-compose-v2   # 3/21b — `docker compose`. POZOR: balíček docker.io ho
 # samba:smbd                # 3/19 — file server
 
 # ── 4. ročník ─────────────────────────────────────────────────────────
+gdisk               # 4/00, 4/01 — sgdisk; dělení disku GPT ze skriptu
+parted              # 4/01 — dělení disků (žák), bývá i v základní instalaci
 mdadm               # 4/02 — RAID
 lvm2                # 4/05 — LVM
 cryptsetup          # 4/04 — LUKS
