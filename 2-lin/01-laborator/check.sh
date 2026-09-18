@@ -8,13 +8,16 @@ PREHLED="$DOKU/stanice.txt"
 JMENO="stanice-$ZAK2"
 
 krok 1 "Prostředí"
+# Repozitář i git jsou v obrazu stanice, ne žákova práce — tahle část je
+# kontrola prostředí, ne úkolu. Hlásí se proto jako „na místě", ať si žák
+# nemyslí, že za to dostal bod.
 require_path "$HOME/os-lab/.git" \
-  "repozitář os-lab je naklonovaný v ~/os-lab" \
-  "chybí ~/os-lab — naklonujte repozitář podle zadání"
+  "repozitář ~/os-lab je na místě" \
+  "chybí ~/os-lab — řekněte o tom vyučujícímu, patří do obrazu stanice"
 require_path "$DOKU" \
   "adresář ~/dokumentace existuje" \
   "chybí ~/dokumentace — spusťte ./start.sh"
-require_prikaz git "nástroj git je nainstalovaný"
+require_prikaz git "nástroj git je na místě"
 
 krok 2 "Jméno stanice"
 require_hostname "$JMENO"
