@@ -195,7 +195,7 @@ zaloz_projekt() {
   sudo udevadm settle >/dev/null 2>&1 || sleep 1
   cast="$(lsblk -rno NAME "/dev/$disk" | tail -n +2 | head -1)"
   [ -n "$cast" ] || { echo "  Oddíl nevznikl — řekněte o tom vyučujícímu."; return 1; }
-  sudo mkfs.ext4 -q -L "$PROJEKT_NAZEV" "/dev/$cast" >/dev/null 2>&1 \
+  sudo mkfs.ext4 -F -q -L "$PROJEKT_NAZEV" "/dev/$cast" >/dev/null 2>&1 \
     || { echo "  Souborový systém se nepodařilo vytvořit."; return 1; }
   return 0
 }

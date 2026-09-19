@@ -110,6 +110,8 @@ if [ -z "$UUID" ]; then
   chyba "souborový systém na poli zatím nemá UUID"
 elif [ ! -s "$PRIPOJ/prevzeti.txt" ]; then
   chyba "na poli chybí prevzeti.txt"
+elif ! grep -vF "$UUID" "$PRIPOJ/prevzeti.txt" 2>/dev/null | grep -qE '.{20,}'; then
+  chyba "v prevzeti.txt je jen UUID — chybí vaše věta"
 elif grep -qF "$UUID" "$PRIPOJ/prevzeti.txt" 2>/dev/null; then
   uspech "v prevzeti.txt je UUID souborového systému na poli"
 else

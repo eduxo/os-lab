@@ -101,6 +101,8 @@ elif [ -z "$UUID" ]; then
 elif [ ! -s "$PREVZETI" ]; then
   chyba "na připojeném disku chybí prevzeti.txt"
   poznamka "soubor patří NA disk, ne vedle něj"
+elif ! grep -vF "$UUID" "$PREVZETI" 2>/dev/null | grep -qE '.{20,}'; then
+  chyba "v prevzeti.txt je jen UUID — chybí vaše věta"
 elif grep -qF "$UUID" "$PREVZETI" 2>/dev/null; then
   uspech "v prevzeti.txt je UUID tohohle souborového systému"
 else
