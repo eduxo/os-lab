@@ -12,16 +12,22 @@
 #
 # Použití:
 #   bash ~/os-lab/nastroje/test-fstab.sh stav      — co je teď v fstab, existuje záloha?
-#   bash ~/os-lab/nastroje/test-fstab.sh rozbij    — přidá vadný řádek (ptá se na potvrzení)
+#   bash ~/os-lab/nastroje/test-fstab.sh rozbij [uuid|volby|typ]
+#                                                 — přidá vadný řádek (ptá se na potvrzení)
 #   bash ~/os-lab/nastroje/test-fstab.sh oprav     — obnoví fstab ze zálohy
 #
-# V nouzovém shellu je kořen jen pro čtení — skript si ho sám přepne
-# do zápisu, když je potřeba.
+# Kořen v nouzovém shellu být jen pro čtení MŮŽE, ale nemusí — závisí na tom,
+# kde start selhal. Skript si to zjistí a přepne jen tehdy, když je potřeba.
+#
+# Výsledek běhu si zapisuje do /root/test-fstab-vysledek.txt, aby nezůstal
+# jen ve vzpomínce: na tyhle odpovědi se ptá zadání labu 4/07.
 
 set -uo pipefail
 
 ZALOHA=/root/fstab.pred-testem
 VADNY_UUID="00000000-0000-0000-0000-000000000000"
+VYSLEDEK=/root/test-fstab-vysledek.txt
+STAV_SCENARE=/root/test-fstab-scenar
 PRIPOJ=/mnt/test-fstab
 ZNACKA="# TEST-FSTAB-EDUXO"
 
@@ -61,13 +67,25 @@ stav)
     ok "fstab je v pořádku (testovací řádek tam není)"
   fi
   [ -f "$ZALOHA" ] && ok "Záloha existuje: $ZALOHA" || info "Záloha zatím není"
+  if [ -s "$VYSLEDEK" ]; then
+    echo; info "Dosavadní výsledky ($VYSLEDEK):"; sed 's/^/      /' "$VYSLEDEK"
+  fi
   echo
   info "Aktuální /etc/fstab:"
   sed 's/^/      /' /etc/fstab
   ;;
 
 rozbij)
-  nadpis "Rozbití fstab"
+  # Scénáře odpovídají labu 4/07: chybné UUID (ověřeno během), překlep
+  # ve volbách a cizí typ souborového systému. Poslední dva musí ukazovat
+  # na SKUTEČNÉ zařízení, jinak by start zastavilo chybějící UUID a test
+  # by měřil něco jiného, než si myslíme.
+  SCENAR="${2:-uuid}"
+  case "$SCENAR" in
+    uuid|volby|typ) ;;
+    *) chyba "Neznámý scénář '$SCENAR'. Použij: uuid | volby | typ"; exit 1 ;;
+  esac
+  nadpis "Rozbití fstab — scénář: $SCENAR"
   if grep -q "$ZNACKA" /etc/fstab; then
     varuj "fstab už rozbitý je. Nejdřív 'oprav'."; exit 1
   fi
@@ -106,12 +124,22 @@ rozbij)
   cp /etc/fstab "$ZALOHA"           && ok "Záloha: $ZALOHA"
   cp /etc/fstab /etc/fstab.pred-testem && ok "Kopie zálohy: /etc/fstab.pred-testem"
   mkdir -p "$PRIPOJ"
+  # Zdroj pro scénáře, které potřebují existující zařízení. Připojit se
+  # stejně nepovede (o to jde), takže se skutečným /boot ani / nic nestane.
+  ZDROJ="$(findmnt -no SOURCE /boot 2>/dev/null | head -1)"
+  [ -n "$ZDROJ" ] || ZDROJ="$(findmnt -no SOURCE / 2>/dev/null | head -1)"
+  case "$SCENAR" in
+    uuid)  RADEK="UUID=$VADNY_UUID  $PRIPOJ  ext4  defaults  0  2" ;;
+    volby) RADEK="$ZDROJ  $PRIPOJ  auto  defaults,noatme  0  0" ;;
+    typ)   RADEK="$ZDROJ  $PRIPOJ  xfs   defaults  0  0" ;;
+  esac
   {
     echo ""
     echo "$ZNACKA  (smaž tenhle a následující řádek)"
-    echo "UUID=$VADNY_UUID  $PRIPOJ  ext4  defaults  0  2"
+    echo "$RADEK"
   } >> /etc/fstab
-  ok "Vadný řádek přidán"
+  echo "$SCENAR" > "$STAV_SCENARE"
+  ok "Vadný řádek přidán: $RADEK"
 
   cat <<'POSTUP'
 
@@ -145,7 +173,22 @@ POSTUP
 
 oprav)
   nadpis "Oprava fstab"
+  # POŘADÍ JE PODSTATNÉ: stav kořene se musí přečíst DŘÍV, než ho
+  # zajisti_zapis případně přepne do zápisu.
+  if findmnt -no OPTIONS / 2>/dev/null | grep -qw ro; then KOREN=ro; else KOREN=rw; fi
+  info "Kořenový svazek je teď: $KOREN"
+  echo
+  info "Jedna otázka do záznamu — na tohle se ptá zadání labu 4/07:"
+  read -r -p "  Chtěl po tobě systém při vstupu do shellu heslo roota? [a/n] " HESLO
+  case "$HESLO" in [aAyY]) HESLO=ano ;; [nN]) HESLO=ne ;; *) HESLO=nevim ;; esac
   zajisti_zapis
+  {
+    printf '%s  scénář=%s  kořen=%s  heslo_roota=%s\n' \
+      "$(date '+%Y-%m-%d %H:%M')" "$(cat "$STAV_SCENARE" 2>/dev/null || echo '?')" \
+      "$KOREN" "$HESLO"
+  } >> "$VYSLEDEK"
+  ok "Zapsáno do $VYSLEDEK"
+  rm -f "$STAV_SCENARE"
   if [ -f "$ZALOHA" ]; then
     cp "$ZALOHA" /etc/fstab && ok "fstab obnoven ze zálohy $ZALOHA"
   elif [ -f /etc/fstab.pred-testem ]; then
@@ -169,7 +212,11 @@ oprav)
 Test emergency shellu (lab 4/7).
 
   bash ~/os-lab/nastroje/test-fstab.sh stav      — co je teď v fstab
-  bash ~/os-lab/nastroje/test-fstab.sh rozbij    — přidá vadný řádek (ptá se na potvrzení)
+  bash ~/os-lab/nastroje/test-fstab.sh rozbij [uuid|volby|typ]
+                                                — přidá vadný řádek (ptá se na potvrzení)
+                                                  uuid  = zařízení, které neexistuje (výchozí)
+                                                  volby = překlep ve volbách připojení
+                                                  typ   = cizí souborový systém
   bash ~/os-lab/nastroje/test-fstab.sh oprav     — obnoví fstab ze zálohy
 
 ⚠️ Před 'rozbij' udělej snapshot VM. Systém po restartu nenaběhne normálně,
